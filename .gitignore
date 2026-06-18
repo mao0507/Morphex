@@ -6,6 +6,7 @@ coverage/
 .env.local
 
 backend/tmp/
+backend/node_modules/
 frontend/dist/
-
+frontend/node_modules/
 .DS_Store
