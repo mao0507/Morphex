@@ -1,5 +1,25 @@
-# Vue 3 + Vite
+# MediaForge 前端
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 + Vite 寫的單頁上傳/轉檔介面。無路由、無狀態管理套件，單一元件 `src/App.vue`。
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## 安裝
+
+```bash
+npm install
+```
+
+## 啟動
+
+```bash
+npm run dev      # 開發模式，預設 http://localhost:5173
+npm run build    # 建置產出至 dist/
+npm run preview  # 預覽建置結果
+```
+
+## 環境變數
+
+| 變數 | 說明 | 預設值 |
+|---|---|---|
+| `VITE_API_BASE_URL` | 後端 API 位址 | `http://localhost:3000` |
+
+啟動前後端服務時，請確認後端已開啟 CORS（已預設開放）。
