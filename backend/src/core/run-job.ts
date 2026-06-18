@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 import { ConversionError } from './errors';
+import { FFMPEG_PATH } from './ffmpeg-binaries';
 
 const DEFAULT_FFMPEG_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -8,7 +9,7 @@ export function runFfmpegJob(
   timeoutMs = DEFAULT_FFMPEG_TIMEOUT_MS,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn('ffmpeg', args);
+    const child = spawn(FFMPEG_PATH, args);
 
     let stderr = '';
     let timedOut = false;

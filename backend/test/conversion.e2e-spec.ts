@@ -6,6 +6,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { FFMPEG_PATH } from '../src/core/ffmpeg-binaries';
 
 describe('Conversion API (e2e)', () => {
   let app: INestApplication;
@@ -27,14 +28,14 @@ describe('Conversion API (e2e)', () => {
     sampleAudioPath = join(workDir, 'sample.mp3');
     brokenFilePath = join(workDir, 'broken.mp4');
 
-    spawnSync('ffmpeg', [
+    spawnSync(FFMPEG_PATH, [
       '-y',
       '-f', 'lavfi', '-i', 'testsrc=duration=1:size=64x64:rate=10',
       '-f', 'lavfi', '-i', 'sine=duration=1',
       '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac',
       sampleVideoPath,
     ]);
-    spawnSync('ffmpeg', [
+    spawnSync(FFMPEG_PATH, [
       '-y',
       '-f', 'lavfi', '-i', 'sine=duration=1',
       '-c:a', 'libmp3lame',

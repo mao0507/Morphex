@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 import { ConversionError } from './errors';
+import { FFPROBE_PATH } from './ffmpeg-binaries';
 
 export interface ProbeStream {
   index: number;
@@ -30,7 +31,7 @@ export function probeFile(
       '-show_streams',
       filePath,
     ];
-    const child = spawn('ffprobe', args);
+    const child = spawn(FFPROBE_PATH, args);
 
     let stdout = '';
     let stderr = '';

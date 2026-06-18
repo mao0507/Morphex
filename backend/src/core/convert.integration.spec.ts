@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { convertFile } from './convert';
 import { ConversionError } from './errors';
+import { FFMPEG_PATH } from './ffmpeg-binaries';
 
 // 這組測試實際呼叫本機 ffmpeg/ffprobe，驗證 core 模組與真實二進位檔的整合行為
 describe('convertFile (整合測試，需本機已安裝 ffmpeg/ffprobe)', () => {
@@ -18,7 +19,7 @@ describe('convertFile (整合測試，需本機已安裝 ffmpeg/ffprobe)', () =>
   });
 
   function generateSampleVideo(path: string) {
-    const result = spawnSync('ffmpeg', [
+    const result = spawnSync(FFMPEG_PATH, [
       '-y',
       '-f',
       'lavfi',

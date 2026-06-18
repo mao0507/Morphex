@@ -1,6 +1,7 @@
 export * from './types';
 export * from './formats';
 export * from './errors';
+export * from './ffmpeg-binaries';
 export * from './probe';
 export * from './detect';
 export * from './ffmpeg-args';
