@@ -22,7 +22,7 @@ Frontend (`cd frontend`):
 - `npm run dev` — Vite dev server, default port 5173; set `VITE_API_BASE_URL` to point at a non-default backend
 - `npm run build` / `npm run preview`
 
-ffmpeg/ffprobe must be on `PATH` — both unit-level integration tests and the app itself spawn the real binaries (no mocking).
+ffmpeg/ffprobe binaries come from `@ffmpeg-installer/ffmpeg` / `@ffprobe-installer/ffprobe` (installed via `npm install`, resolved in `backend/src/core/ffmpeg-binaries.ts`) — no system `PATH` install needed. Both unit-level integration tests and the app itself spawn these real binaries (no mocking).
 
 ## Architecture
 
@@ -32,6 +32,7 @@ This is the load-bearing design constraint: everything in `core/` must be callab
 
 - `types.ts` — `FormatDefinition`, `MediaKind`
 - `formats.ts` — `FORMATS` array is the single source of truth for supported formats (id, label, ext, kind, videoCodec, audioCodec, extraArgs, mimeTypes). Adding a format = adding an entry here, nothing else.
+- `ffmpeg-binaries.ts` — `FFMPEG_PATH` / `FFPROBE_PATH` resolved from the installer packages; every spawn elsewhere uses these constants instead of bare `'ffmpeg'`/`'ffprobe'` strings.
 - `probe.ts` — `probeFile()` spawns `ffprobe -show_streams -show_format`, JSON-parses output, timeout-guarded, rejects with `ConversionError('PROBE_FAILED', ...)` if no streams.
 - `detect.ts` — `detectMediaKind()` decides video vs audio. Video streams whose codec is mjpeg/png/bmp/gif, or whose disposition has `attached_pic: 1`, are treated as cover-art thumbnails and ignored — a file with only a thumbnail + audio stream is classified `audio`, not `video`.
 - `ffmpeg-args.ts` — `validateCombination()` rejects audio→video before anything touches ffmpeg; `buildFfmpegArgs()` always returns an argv array (never a shell string) for `spawn`.
