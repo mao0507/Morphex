@@ -1,4 +1,4 @@
-import { FormatDefinition, MediaKind } from './types';
+import { ConvertTuning, FormatDefinition, MediaKind } from './types';
 import { ConversionError } from './errors';
 
 export function validateCombination(
@@ -18,10 +18,26 @@ export function buildFfmpegArgs(
   outputPath: string,
   inputKind: MediaKind,
   targetFormat: FormatDefinition,
+  tuning: ConvertTuning = {},
 ): string[] {
   validateCombination(inputKind, targetFormat);
 
-  const args = ['-y', '-i', inputPath];
+  const args = ['-y'];
+
+  if (tuning.trimStartSec !== undefined) {
+    args.push('-ss', String(tuning.trimStartSec));
+  }
+
+  args.push('-i', inputPath);
+
+  if (tuning.trimEndSec !== undefined) {
+    const duration = tuning.trimEndSec - (tuning.trimStartSec ?? 0);
+    if (duration > 0) args.push('-t', String(duration));
+  }
+
+  if (tuning.stripMetadata) {
+    args.push('-map_metadata', '-1');
+  }
 
   if (targetFormat.kind === 'audio') {
     args.push('-vn');
@@ -29,6 +45,23 @@ export function buildFfmpegArgs(
   } else {
     if (targetFormat.videoCodec) args.push('-c:v', targetFormat.videoCodec);
     if (targetFormat.audioCodec) args.push('-c:a', targetFormat.audioCodec);
+
+    if (tuning.resolution) {
+      args.push('-vf', `scale=${tuning.resolution.replace('x', ':')}`);
+    }
+    if (tuning.frameRateFps) {
+      args.push('-r', String(tuning.frameRateFps));
+    }
+    if (tuning.videoBitrateKbps) {
+      args.push('-b:v', `${tuning.videoBitrateKbps}k`);
+    }
+  }
+
+  if (tuning.audioBitrateKbps) {
+    args.push('-b:a', `${tuning.audioBitrateKbps}k`);
+  }
+  if (tuning.normalizeAudio) {
+    args.push('-af', 'loudnorm');
   }
 
   if (targetFormat.extraArgs?.length) {

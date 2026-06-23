@@ -45,7 +45,11 @@ describe('convertFile (整合測試，需本機已安裝 ffmpeg/ffprobe)', () =>
     const outputPath = join(workDir, 'sample.webm');
     generateSampleVideo(inputPath);
 
-    const result = await convertFile({ inputPath, outputPath, targetFormatId: 'webm' });
+    const result = await convertFile({
+      inputPath,
+      outputPath,
+      targetFormatId: 'webm',
+    });
 
     expect(result.inputKind).toBe('video');
     expect(existsSync(outputPath)).toBe(true);
@@ -56,7 +60,11 @@ describe('convertFile (整合測試，需本機已安裝 ffmpeg/ffprobe)', () =>
     const outputPath = join(workDir, 'sample2.mp3');
     generateSampleVideo(inputPath);
 
-    const result = await convertFile({ inputPath, outputPath, targetFormatId: 'mp3' });
+    const result = await convertFile({
+      inputPath,
+      outputPath,
+      targetFormatId: 'mp3',
+    });
 
     expect(result.inputKind).toBe('video');
     expect(existsSync(outputPath)).toBe(true);

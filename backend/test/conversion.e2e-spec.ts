@@ -30,15 +30,30 @@ describe('Conversion API (e2e)', () => {
 
     spawnSync(FFMPEG_PATH, [
       '-y',
-      '-f', 'lavfi', '-i', 'testsrc=duration=1:size=64x64:rate=10',
-      '-f', 'lavfi', '-i', 'sine=duration=1',
-      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac',
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc=duration=1:size=64x64:rate=10',
+      '-f',
+      'lavfi',
+      '-i',
+      'sine=duration=1',
+      '-c:v',
+      'libx264',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:a',
+      'aac',
       sampleVideoPath,
     ]);
     spawnSync(FFMPEG_PATH, [
       '-y',
-      '-f', 'lavfi', '-i', 'sine=duration=1',
-      '-c:a', 'libmp3lame',
+      '-f',
+      'lavfi',
+      '-i',
+      'sine=duration=1',
+      '-c:a',
+      'libmp3lame',
       sampleAudioPath,
     ]);
     writeFileSync(brokenFilePath, 'not a real media file');
@@ -48,6 +63,23 @@ describe('Conversion API (e2e)', () => {
     rmSync(workDir, { recursive: true, force: true });
     await app.close();
   });
+
+  // POST /convert 只同步做格式驗證與 probe，ffmpeg 編碼在背景跑，需輪詢 status 至 done/error
+  async function waitForJobDone(
+    id: string,
+  ): Promise<{ status: string; downloadUrl?: string; error?: unknown }> {
+    const deadline = Date.now() + 20_000;
+    while (Date.now() < deadline) {
+      const res = await request(app.getHttpServer())
+        .get(`/convert/${id}/status`)
+        .expect(200);
+      if (res.body.status === 'done' || res.body.status === 'error') {
+        return res.body;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(`轉檔工作 ${id} 逾時未完成`);
+  }
 
   it('GET /formats 回傳格式清單', async () => {
     const res = await request(app.getHttpServer()).get('/formats').expect(200);
@@ -60,17 +92,21 @@ describe('Conversion API (e2e)', () => {
       .post('/convert')
       .attach('file', sampleVideoPath)
       .field('format', 'webm')
-      .expect(201);
+      .expect(202);
 
-    expect(res.body.downloadUrl).toMatch(/^\/download\//);
+    expect(res.body.id).toBeTruthy();
+
+    const status = await waitForJobDone(res.body.id);
+    expect(status.status).toBe('done');
+    expect(status.downloadUrl).toMatch(/^\/download\//);
 
     await request(app.getHttpServer())
-      .get(res.body.downloadUrl)
+      .get(status.downloadUrl!)
       .expect(200)
       .expect('Content-Disposition', /attachment/);
 
     // 下載後即刪除，重複下載應 404
-    await request(app.getHttpServer()).get(res.body.downloadUrl).expect(404);
+    await request(app.getHttpServer()).get(status.downloadUrl!).expect(404);
   }, 30_000);
 
   it('影片轉音訊：mp4 -> mp3', async () => {
@@ -78,9 +114,11 @@ describe('Conversion API (e2e)', () => {
       .post('/convert')
       .attach('file', sampleVideoPath)
       .field('format', 'mp3')
-      .expect(201);
+      .expect(202);
 
-    await request(app.getHttpServer()).get(res.body.downloadUrl).expect(200);
+    const status = await waitForJobDone(res.body.id);
+    expect(status.status).toBe('done');
+    await request(app.getHttpServer()).get(status.downloadUrl!).expect(200);
   }, 30_000);
 
   it('音訊轉音訊：mp3 -> flac', async () => {
@@ -88,9 +126,25 @@ describe('Conversion API (e2e)', () => {
       .post('/convert')
       .attach('file', sampleAudioPath)
       .field('format', 'flac')
-      .expect(201);
+      .expect(202);
 
-    await request(app.getHttpServer()).get(res.body.downloadUrl).expect(200);
+    const status = await waitForJobDone(res.body.id);
+    expect(status.status).toBe('done');
+    await request(app.getHttpServer()).get(status.downloadUrl!).expect(200);
+  }, 30_000);
+
+  it('帶進階參數（resolution/normalizeAudio）：轉檔成功', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/convert')
+      .attach('file', sampleVideoPath)
+      .field('format', 'webm')
+      .field('resolution', '32x32')
+      .field('normalizeAudio', 'true')
+      .expect(202);
+
+    const status = await waitForJobDone(res.body.id);
+    expect(status.status).toBe('done');
+    await request(app.getHttpServer()).get(status.downloadUrl!).expect(200);
   }, 30_000);
 
   it('音訊轉影片：回傳 400', async () => {
@@ -125,15 +179,27 @@ describe('Conversion API (e2e)', () => {
   });
 
   it('下載不存在的 id：回傳 404', async () => {
-    await request(app.getHttpServer()).get('/download/not-a-real-id').expect(404);
+    await request(app.getHttpServer())
+      .get('/download/not-a-real-id')
+      .expect(404);
+  });
+
+  it('查詢不存在的轉檔工作：回傳 404', async () => {
+    await request(app.getHttpServer())
+      .get('/convert/not-a-real-id/status')
+      .expect(404);
   });
 
   it('暫存資料夾在請求結束後不殘留 uploads/outputs 檔案', () => {
     const uploadsDir = join(process.cwd(), 'tmp', 'uploads');
     const outputsDir = join(process.cwd(), 'tmp', 'outputs');
     const fs = require('fs');
-    const leftoverUploads = existsSync(uploadsDir) ? fs.readdirSync(uploadsDir) : [];
-    const leftoverOutputs = existsSync(outputsDir) ? fs.readdirSync(outputsDir) : [];
+    const leftoverUploads = existsSync(uploadsDir)
+      ? fs.readdirSync(uploadsDir)
+      : [];
+    const leftoverOutputs = existsSync(outputsDir)
+      ? fs.readdirSync(outputsDir)
+      : [];
     expect(leftoverUploads).toEqual([]);
     expect(leftoverOutputs).toEqual([]);
   });

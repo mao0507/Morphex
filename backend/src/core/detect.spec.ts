@@ -18,7 +18,9 @@ describe('detectMediaKind', () => {
   });
 
   it('回傳 audio，當只有 audio stream', () => {
-    const result = detectMediaKind(probe([{ index: 0, codec_type: 'audio', codec_name: 'mp3' }]));
+    const result = detectMediaKind(
+      probe([{ index: 0, codec_type: 'audio', codec_name: 'mp3' }]),
+    );
     expect(result).toBe('audio');
   });
 
@@ -35,7 +37,12 @@ describe('detectMediaKind', () => {
   it('排除 attached_pic 封面圖 video stream，視為 audio', () => {
     const result = detectMediaKind(
       probe([
-        { index: 0, codec_type: 'video', codec_name: 'png', disposition: { attached_pic: 1 } },
+        {
+          index: 0,
+          codec_type: 'video',
+          codec_name: 'png',
+          disposition: { attached_pic: 1 },
+        },
         { index: 1, codec_type: 'audio', codec_name: 'flac' },
       ]),
     );
@@ -43,11 +50,15 @@ describe('detectMediaKind', () => {
   });
 
   it('丟出 ConversionError(PROBE_FAILED)，當無任何可用 stream', () => {
-    expect(() => detectMediaKind(probe([{ index: 0, codec_type: 'video', codec_name: 'mjpeg' }]))).toThrow(
-      ConversionError,
-    );
+    expect(() =>
+      detectMediaKind(
+        probe([{ index: 0, codec_type: 'video', codec_name: 'mjpeg' }]),
+      ),
+    ).toThrow(ConversionError);
     try {
-      detectMediaKind(probe([{ index: 0, codec_type: 'video', codec_name: 'mjpeg' }]));
+      detectMediaKind(
+        probe([{ index: 0, codec_type: 'video', codec_name: 'mjpeg' }]),
+      );
     } catch (err) {
       expect((err as ConversionError).code).toBe('PROBE_FAILED');
     }

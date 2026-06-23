@@ -51,7 +51,9 @@ export function probeFile(
 
     child.on('error', (err) => {
       clearTimeout(timer);
-      reject(new ConversionError('PROBE_FAILED', 'ffprobe 無法啟動', err.message));
+      reject(
+        new ConversionError('PROBE_FAILED', 'ffprobe 無法啟動', err.message),
+      );
     });
 
     child.on('close', (code) => {
@@ -76,13 +78,19 @@ export function probeFile(
         const parsed = JSON.parse(stdout) as ProbeResult;
         if (!parsed.streams || parsed.streams.length === 0) {
           reject(
-            new ConversionError('PROBE_FAILED', '檔案不含任何可用的媒體串流', stderr),
+            new ConversionError(
+              'PROBE_FAILED',
+              '檔案不含任何可用的媒體串流',
+              stderr,
+            ),
           );
           return;
         }
         resolve(parsed);
       } catch {
-        reject(new ConversionError('PROBE_FAILED', 'ffprobe 輸出解析失敗', stderr));
+        reject(
+          new ConversionError('PROBE_FAILED', 'ffprobe 輸出解析失敗', stderr),
+        );
       }
     });
   });

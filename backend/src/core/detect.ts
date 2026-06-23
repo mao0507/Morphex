@@ -12,11 +12,14 @@ function isThumbnailVideoStream(stream: ProbeStream): boolean {
 
 export function detectMediaKind(probe: ProbeResult): MediaKind {
   const hasRealVideo = probe.streams.some(
-    (stream) => stream.codec_type === 'video' && !isThumbnailVideoStream(stream),
+    (stream) =>
+      stream.codec_type === 'video' && !isThumbnailVideoStream(stream),
   );
   if (hasRealVideo) return 'video';
 
-  const hasAudio = probe.streams.some((stream) => stream.codec_type === 'audio');
+  const hasAudio = probe.streams.some(
+    (stream) => stream.codec_type === 'audio',
+  );
   if (hasAudio) return 'audio';
 
   throw new ConversionError(

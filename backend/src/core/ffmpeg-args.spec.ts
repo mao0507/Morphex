@@ -45,17 +45,113 @@ describe('buildFfmpegArgs', () => {
   it('video 轉 audio：帶 -vn 且不含 video codec', () => {
     const mp3 = getFormatById('mp3')!;
     const args = buildFfmpegArgs('/tmp/in.mp4', '/tmp/out.mp3', 'video', mp3);
-    expect(args).toEqual(['-y', '-i', '/tmp/in.mp4', '-vn', '-c:a', 'libmp3lame', '/tmp/out.mp3']);
+    expect(args).toEqual([
+      '-y',
+      '-i',
+      '/tmp/in.mp4',
+      '-vn',
+      '-c:a',
+      'libmp3lame',
+      '/tmp/out.mp3',
+    ]);
   });
 
   it('audio 轉 audio：帶 -vn', () => {
     const flac = getFormatById('flac')!;
     const args = buildFfmpegArgs('/tmp/in.wav', '/tmp/out.flac', 'audio', flac);
-    expect(args).toEqual(['-y', '-i', '/tmp/in.wav', '-vn', '-c:a', 'flac', '/tmp/out.flac']);
+    expect(args).toEqual([
+      '-y',
+      '-i',
+      '/tmp/in.wav',
+      '-vn',
+      '-c:a',
+      'flac',
+      '/tmp/out.flac',
+    ]);
   });
 
   it('audio 轉 video：丟出 UNSUPPORTED_COMBINATION，不組裝參數', () => {
     const webm = getFormatById('webm')!;
-    expect(() => buildFfmpegArgs('/tmp/in.mp3', '/tmp/out.webm', 'audio', webm)).toThrow(ConversionError);
+    expect(() =>
+      buildFfmpegArgs('/tmp/in.mp3', '/tmp/out.webm', 'audio', webm),
+    ).toThrow(ConversionError);
+  });
+
+  it('套用 resolution/frameRate/bitrate 等進階參數', () => {
+    const mp4 = getFormatById('mp4')!;
+    const args = buildFfmpegArgs('/tmp/in.mov', '/tmp/out.mp4', 'video', mp4, {
+      resolution: '1280x720',
+      frameRateFps: 30,
+      videoBitrateKbps: 2000,
+      audioBitrateKbps: 128,
+    });
+    expect(args).toEqual([
+      '-y',
+      '-i',
+      '/tmp/in.mov',
+      '-c:v',
+      'libx264',
+      '-c:a',
+      'aac',
+      '-vf',
+      'scale=1280:720',
+      '-r',
+      '30',
+      '-b:v',
+      '2000k',
+      '-b:a',
+      '128k',
+      '-pix_fmt',
+      'yuv420p',
+      '/tmp/out.mp4',
+    ]);
+  });
+
+  it('trimStart/trimEnd 轉成 -ss 與 -t', () => {
+    const mp3 = getFormatById('mp3')!;
+    const args = buildFfmpegArgs('/tmp/in.mp4', '/tmp/out.mp3', 'video', mp3, {
+      trimStartSec: 5,
+      trimEndSec: 15,
+    });
+    expect(args).toEqual([
+      '-y',
+      '-ss',
+      '5',
+      '-i',
+      '/tmp/in.mp4',
+      '-t',
+      '10',
+      '-vn',
+      '-c:a',
+      'libmp3lame',
+      '/tmp/out.mp3',
+    ]);
+  });
+
+  it('normalizeAudio 與 stripMetadata 各自加上對應參數', () => {
+    const flac = getFormatById('flac')!;
+    const args = buildFfmpegArgs(
+      '/tmp/in.wav',
+      '/tmp/out.flac',
+      'audio',
+      flac,
+      {
+        normalizeAudio: true,
+        stripMetadata: true,
+      },
+    );
+    expect(args).toEqual([
+      '-y',
+      '-i',
+      '/tmp/in.wav',
+      '-map_metadata',
+      '-1',
+      '-vn',
+      '-c:a',
+      'flac',
+      '-af',
+      'loudnorm',
+      '/tmp/out.flac',
+    ]);
   });
 });
