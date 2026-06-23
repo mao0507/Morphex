@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { gsap } from 'gsap'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 const MAX_UPLOAD_MB = 500
@@ -28,6 +29,57 @@ const AUDIO_BITRATE_PRESETS = [
   { value: '128', label: '128 kbps' },
 ]
 
+const VIDEO_CODEC_PRESETS = [
+  { value: '', label: '格式預設' },
+  { value: 'h264', label: 'H.264' },
+  { value: 'h265', label: 'H.265 / HEVC' },
+  { value: 'vp9', label: 'VP9' },
+  { value: 'av1', label: 'AV1' },
+  { value: 'mpeg4', label: 'MPEG-4' },
+  { value: 'copy', label: '不重新編碼 (copy)' },
+]
+
+const AUDIO_CODEC_PRESETS = [
+  { value: '', label: '格式預設' },
+  { value: 'aac', label: 'AAC' },
+  { value: 'mp3', label: 'MP3' },
+  { value: 'opus', label: 'Opus' },
+  { value: 'flac', label: 'FLAC' },
+  { value: 'vorbis', label: 'Vorbis' },
+  { value: 'copy', label: '不重新編碼 (copy)' },
+]
+
+const PRESET_PRESETS = [
+  { value: '', label: '編碼速度預設' },
+  { value: 'ultrafast', label: 'ultrafast' },
+  { value: 'veryfast', label: 'veryfast' },
+  { value: 'fast', label: 'fast' },
+  { value: 'medium', label: 'medium' },
+  { value: 'slow', label: 'slow' },
+  { value: 'veryslow', label: 'veryslow' },
+]
+
+const SAMPLE_RATE_PRESETS = [
+  { value: '', label: '原始取樣率' },
+  { value: '48000', label: '48000 Hz' },
+  { value: '44100', label: '44100 Hz' },
+  { value: '22050', label: '22050 Hz' },
+  { value: '16000', label: '16000 Hz' },
+]
+
+const AUDIO_CHANNEL_PRESETS = [
+  { value: '', label: '原始聲道' },
+  { value: '2', label: '立體聲 (2)' },
+  { value: '1', label: '單聲道 (1)' },
+]
+
+const ROTATE_PRESETS = [
+  { value: '', label: '不旋轉' },
+  { value: '90', label: '90°' },
+  { value: '180', label: '180°' },
+  { value: '270', label: '270°' },
+]
+
 const STATUS_LABEL = {
   idle: '待轉換',
   queued: '排隊中',
@@ -42,8 +94,10 @@ const defaultFormat = ref('')
 const isDragging = ref(false)
 const theme = ref(localStorage.getItem('mediaforge-theme') || systemTheme())
 const fileInputRef = ref(null)
+const shellRef = ref(null)
 
 let localIdCounter = 0
+let gsapCtx
 const pollTimers = new Map()
 
 const videoFormats = computed(() => formats.value.filter((f) => f.kind === 'video'))
@@ -100,6 +154,22 @@ function isVideoEntry(entry) {
 
 onMounted(async () => {
   applyTheme()
+
+  if (shellRef.value) {
+    gsapCtx = gsap.context(() => {
+      gsap.from('.site-header', { y: -12, autoAlpha: 0, duration: 0.35, ease: 'power2.out' })
+      gsap.from('.hero-text > *', {
+        y: 10,
+        autoAlpha: 0,
+        duration: 0.35,
+        stagger: 0.06,
+        delay: 0.05,
+        ease: 'power2.out',
+      })
+      gsap.from('.dropzone', { y: 10, autoAlpha: 0, duration: 0.35, delay: 0.1, ease: 'power2.out' })
+    }, shellRef.value)
+  }
+
   try {
     const res = await fetch(`${API_BASE}/formats`)
     if (!res.ok) throw new Error('無法載入格式清單')
@@ -112,13 +182,23 @@ onMounted(async () => {
 
 onUnmounted(() => {
   for (const timer of pollTimers.values()) clearInterval(timer)
+  gsapCtx?.revert()
 })
+
+function onCardEnter(el, done) {
+  gsap.from(el, { y: -16, autoAlpha: 0, duration: 0.4, ease: 'power2.out', onComplete: done })
+}
+
+function onCardLeave(el, done) {
+  gsap.to(el, { x: 24, autoAlpha: 0, duration: 0.28, ease: 'power1.in', onComplete: done })
+}
 
 function makeEntry(file) {
   localIdCounter += 1
   return {
     localId: `f${localIdCounter}`,
     file,
+    previewUrl: URL.createObjectURL(file),
     name: file.name,
     sizeLabel: formatBytes(file.size),
     format: defaultFormat.value,
@@ -132,6 +212,21 @@ function makeEntry(file) {
       trimEnd: '',
       normalizeAudio: false,
       stripMetadata: false,
+      videoCodec: '',
+      audioCodec: '',
+      crf: '',
+      preset: '',
+      audioChannels: '',
+      sampleRate: '',
+      rotate: '',
+      flipHorizontal: false,
+      flipVertical: false,
+      speed: '',
+      deinterlace: false,
+      denoise: false,
+      brightness: '',
+      contrast: '',
+      saturation: '',
     },
     status: 'idle',
     progress: 0,
@@ -182,6 +277,7 @@ function applyTuningToAll(entry) {
 
 function removeEntry(entry) {
   stopPolling(entry.localId)
+  URL.revokeObjectURL(entry.previewUrl)
   queue.value = queue.value.filter((e) => e.localId !== entry.localId)
 }
 
@@ -206,6 +302,21 @@ function buildFormData(entry) {
   if (t.trimEnd) formData.append('trimEnd', t.trimEnd)
   if (t.normalizeAudio) formData.append('normalizeAudio', 'true')
   if (t.stripMetadata) formData.append('stripMetadata', 'true')
+  if (t.videoCodec) formData.append('videoCodec', t.videoCodec)
+  if (t.audioCodec) formData.append('audioCodec', t.audioCodec)
+  if (t.crf) formData.append('crf', t.crf)
+  if (t.preset) formData.append('preset', t.preset)
+  if (t.audioChannels) formData.append('audioChannels', t.audioChannels)
+  if (t.sampleRate) formData.append('sampleRate', t.sampleRate)
+  if (t.rotate) formData.append('rotate', t.rotate)
+  if (t.flipHorizontal) formData.append('flipHorizontal', 'true')
+  if (t.flipVertical) formData.append('flipVertical', 'true')
+  if (t.speed) formData.append('speed', t.speed)
+  if (t.deinterlace) formData.append('deinterlace', 'true')
+  if (t.denoise) formData.append('denoise', 'true')
+  if (t.brightness) formData.append('brightness', t.brightness)
+  if (t.contrast) formData.append('contrast', t.contrast)
+  if (t.saturation) formData.append('saturation', t.saturation)
   return formData
 }
 
@@ -248,6 +359,8 @@ function pollStatus(entry) {
         entry.status = 'done'
         entry.progress = 100
         entry.downloadUrl = `${API_BASE}${data.downloadUrl}`
+        const card = document.querySelector(`[data-local-id="${entry.localId}"]`)
+        if (card) gsap.fromTo(card, { scale: 1 }, { scale: 1.015, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' })
       } else if (data.status === 'error') {
         stopPolling(entry.localId)
         entry.status = 'error'
@@ -283,7 +396,7 @@ function downloadAll() {
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" ref="shellRef">
     <header class="site-header">
       <div class="header-inner">
         <div class="brand-group">
@@ -370,11 +483,25 @@ function downloadAll() {
         <span class="queue-header-count">{{ fileCountLabel }}</span>
       </div>
 
-      <ul class="queue-list" v-if="queue.length">
-        <li v-for="entry in queue" :key="entry.localId" class="queue-card">
+      <TransitionGroup
+        tag="ul"
+        class="queue-list"
+        v-if="queue.length"
+        :css="false"
+        @enter="onCardEnter"
+        @leave="onCardLeave"
+      >
+        <li v-for="entry in queue" :key="entry.localId" class="queue-card" :data-local-id="entry.localId">
           <div class="queue-row">
             <div class="thumb" :class="isVideoEntry(entry) ? 'thumb-video' : 'thumb-audio'">
-              <span v-if="isVideoEntry(entry)">VIDEO</span>
+              <video
+                v-if="isVideoEntry(entry)"
+                class="thumb-video-el"
+                :src="entry.previewUrl"
+                muted
+                preload="metadata"
+                @loadedmetadata="(e) => { e.target.currentTime = 0.05 }"
+              ></video>
               <span v-else class="thumb-bars" aria-hidden="true">
                 <span v-for="n in 6" :key="n" class="thumb-bar" :style="{ height: `${8 + ((n * 5) % 13)}px` }"></span>
               </span>
@@ -488,6 +615,80 @@ function downloadAll() {
                 </div>
               </div>
 
+              <label class="settings-field">
+                <span class="settings-label">視訊編碼器</span>
+                <div class="select-wrap">
+                  <select class="settings-select" v-model="entry.tuning.videoCodec">
+                    <option v-for="opt in VIDEO_CODEC_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </label>
+              <label class="settings-field">
+                <span class="settings-label">音訊編碼器</span>
+                <div class="select-wrap">
+                  <select class="settings-select" v-model="entry.tuning.audioCodec">
+                    <option v-for="opt in AUDIO_CODEC_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </label>
+              <label class="settings-field">
+                <span class="settings-label">編碼速度</span>
+                <div class="select-wrap">
+                  <select class="settings-select" v-model="entry.tuning.preset">
+                    <option v-for="opt in PRESET_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </label>
+
+              <label class="settings-field">
+                <span class="settings-label">畫質 CRF (0-51)</span>
+                <input class="settings-input" type="number" min="0" max="51" placeholder="自動" v-model="entry.tuning.crf" />
+              </label>
+              <label class="settings-field">
+                <span class="settings-label">取樣率</span>
+                <div class="select-wrap">
+                  <select class="settings-select" v-model="entry.tuning.sampleRate">
+                    <option v-for="opt in SAMPLE_RATE_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </label>
+              <label class="settings-field">
+                <span class="settings-label">聲道</span>
+                <div class="select-wrap">
+                  <select class="settings-select" v-model="entry.tuning.audioChannels">
+                    <option v-for="opt in AUDIO_CHANNEL_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </label>
+
+              <label class="settings-field">
+                <span class="settings-label">旋轉</span>
+                <div class="select-wrap">
+                  <select class="settings-select" v-model="entry.tuning.rotate">
+                    <option v-for="opt in ROTATE_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </label>
+              <label class="settings-field">
+                <span class="settings-label">速度倍率 (0.25-4)</span>
+                <input class="settings-input" type="number" min="0.25" max="4" step="0.1" placeholder="1.0" v-model="entry.tuning.speed" />
+              </label>
+
+              <div class="settings-field settings-field-wide">
+                <span class="settings-label">畫面調整：亮度 / 對比 / 飽和度</span>
+                <div class="trim-row">
+                  <input class="settings-input trim-input" type="number" min="-1" max="1" step="0.1" placeholder="亮度" v-model="entry.tuning.brightness" />
+                  <input class="settings-input trim-input" type="number" min="0" max="2" step="0.1" placeholder="對比" v-model="entry.tuning.contrast" />
+                  <input class="settings-input trim-input" type="number" min="0" max="3" step="0.1" placeholder="飽和度" v-model="entry.tuning.saturation" />
+                </div>
+              </div>
+
               <div class="settings-field settings-field-wide settings-toggles">
                 <label class="toggle">
                   <input type="checkbox" v-model="entry.tuning.normalizeAudio" class="visually-hidden" />
@@ -499,6 +700,26 @@ function downloadAll() {
                   <span class="toggle-track" :class="{ on: entry.tuning.stripMetadata }"><span class="toggle-knob"></span></span>
                   移除中繼資料
                 </label>
+                <label class="toggle">
+                  <input type="checkbox" v-model="entry.tuning.flipHorizontal" class="visually-hidden" />
+                  <span class="toggle-track" :class="{ on: entry.tuning.flipHorizontal }"><span class="toggle-knob"></span></span>
+                  水平翻轉
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" v-model="entry.tuning.flipVertical" class="visually-hidden" />
+                  <span class="toggle-track" :class="{ on: entry.tuning.flipVertical }"><span class="toggle-knob"></span></span>
+                  垂直翻轉
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" v-model="entry.tuning.deinterlace" class="visually-hidden" />
+                  <span class="toggle-track" :class="{ on: entry.tuning.deinterlace }"><span class="toggle-knob"></span></span>
+                  去交錯
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" v-model="entry.tuning.denoise" class="visually-hidden" />
+                  <span class="toggle-track" :class="{ on: entry.tuning.denoise }"><span class="toggle-knob"></span></span>
+                  降噪
+                </label>
               </div>
             </div>
 
@@ -508,7 +729,7 @@ function downloadAll() {
             </div>
           </div>
         </li>
-      </ul>
+      </TransitionGroup>
     </main>
 
     <footer class="site-footer" v-if="queue.length">
@@ -716,13 +937,22 @@ function downloadAll() {
   margin-bottom: 20px;
   cursor: pointer;
   font: inherit;
-  transition: 0.18s;
+  transition: border-color 0.18s, background 0.18s, transform 0.2s ease;
 }
 
 .dropzone:hover,
 .dropzone.is-dragging {
   border-color: var(--accent);
   background: color-mix(in oklab, var(--accent) 7%, var(--bg-2));
+}
+
+.dropzone:hover .dropzone-icon,
+.dropzone.is-dragging .dropzone-icon {
+  transform: translateY(-3px) scale(1.06);
+}
+
+.dropzone.is-dragging {
+  transform: scale(1.01);
 }
 
 .dropzone-icon {
@@ -736,6 +966,7 @@ function downloadAll() {
   font-size: 20px;
   font-weight: 300;
   color: var(--accent);
+  transition: transform 0.25s ease;
 }
 
 .dropzone-text {
@@ -820,6 +1051,11 @@ function downloadAll() {
 
 .chip:hover {
   border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.chip:active {
+  transform: translateY(0) scale(0.96);
 }
 
 .chip.active {
@@ -885,14 +1121,17 @@ function downloadAll() {
   border: 1px solid var(--border-soft);
   display: grid;
   place-items: center;
+  overflow: hidden;
 }
 
 .thumb-video {
   background: repeating-linear-gradient(135deg, var(--bg-3) 0 7px, var(--bg) 7px 14px);
-  font-family: var(--mono);
-  font-size: 8.5px;
-  letter-spacing: 0.12em;
-  color: var(--text-faint);
+}
+
+.thumb-video-el {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .thumb-audio {
@@ -1120,6 +1359,11 @@ function downloadAll() {
 
 .btn-solid:hover:not(:disabled) {
   filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.btn-solid:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
 }
 
 .btn-solid:disabled {
