@@ -1,4 +1,4 @@
-export type MediaKind = 'video' | 'audio';
+export type MediaKind = 'video' | 'audio' | 'image';
 
 export interface FormatDefinition {
   id: string;
@@ -49,4 +49,5 @@ export interface ConvertTuning {
   brightness?: number; // -1..1
   contrast?: number; // 0..2
   saturation?: number; // 0..3
+  quality?: number; // 1-100，僅圖片格式使用（jpeg/webp/avif/tiff 壓縮品質）
 }

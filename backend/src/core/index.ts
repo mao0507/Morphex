@@ -6,4 +6,5 @@ export * from './probe';
 export * from './detect';
 export * from './ffmpeg-args';
 export * from './run-job';
+export * from './image-convert';
 export * from './convert';

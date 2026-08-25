@@ -3,6 +3,7 @@ export type ConversionErrorCode =
   | 'UNSUPPORTED_COMBINATION'
   | 'PROBE_FAILED'
   | 'FFMPEG_FAILED'
+  | 'IMAGE_CONVERT_FAILED'
   | 'TIMEOUT';
 
 export class ConversionError extends Error {

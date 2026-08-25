@@ -31,6 +31,7 @@ export interface ConvertRequestBody {
   brightness?: string;
   contrast?: string;
   saturation?: string;
+  quality?: string;
 }
 
 const RESOLUTION_RE = /^\d+x\d+$/;
@@ -103,5 +104,6 @@ export function parseTuningOptions(body: ConvertRequestBody): ConvertTuning {
     brightness: parseNumberInRange(body.brightness, -1, 1),
     contrast: parseNumberInRange(body.contrast, 0, 2),
     saturation: parseNumberInRange(body.saturation, 0, 3),
+    quality: parseNumberInRange(body.quality, 1, 100),
   };
 }

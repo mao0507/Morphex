@@ -91,6 +91,9 @@ const STATUS_LABEL = {
 const formats = ref([])
 const queue = ref([])
 const defaultFormat = ref('')
+const defaultImageFormat = ref('')
+const activeTab = ref('video') // 'video' | 'image'
+const rejectionNotice = ref('')
 const isDragging = ref(false)
 const theme = ref(localStorage.getItem('mediaforge-theme') || systemTheme())
 const fileInputRef = ref(null)
@@ -98,22 +101,32 @@ const shellRef = ref(null)
 
 let localIdCounter = 0
 let gsapCtx
+let rejectionTimer = null
 const pollTimers = new Map()
 
 const videoFormats = computed(() => formats.value.filter((f) => f.kind === 'video'))
 const audioFormats = computed(() => formats.value.filter((f) => f.kind === 'audio'))
-const hasIdleOrError = computed(() => queue.value.some((e) => e.status === 'idle' || e.status === 'error'))
-const hasDone = computed(() => queue.value.some((e) => e.status === 'done'))
-const doneCount = computed(() => queue.value.filter((e) => e.status === 'done').length)
-const processingCount = computed(() => queue.value.filter((e) => e.status === 'processing' || e.status === 'queued').length)
-const idleCount = computed(() => queue.value.filter((e) => e.status === 'idle').length)
-const errorCount = computed(() => queue.value.filter((e) => e.status === 'error').length)
+const imageFormats = computed(() => formats.value.filter((f) => f.kind === 'image'))
+const visibleQueue = computed(() => queue.value.filter((e) => entryTabKind(e) === activeTab.value))
+const hasIdleOrError = computed(() => visibleQueue.value.some((e) => e.status === 'idle' || e.status === 'error'))
+const hasDone = computed(() => visibleQueue.value.some((e) => e.status === 'done'))
+const doneCount = computed(() => visibleQueue.value.filter((e) => e.status === 'done').length)
+const processingCount = computed(() => visibleQueue.value.filter((e) => e.status === 'processing' || e.status === 'queued').length)
+const idleCount = computed(() => visibleQueue.value.filter((e) => e.status === 'idle').length)
+const errorCount = computed(() => visibleQueue.value.filter((e) => e.status === 'error').length)
 const pendingCount = computed(() => idleCount.value + errorCount.value)
-const fileCountLabel = computed(() => `${queue.value.length} 個檔案`)
-const totalSizeLabel = computed(() => formatBytes(queue.value.reduce((sum, e) => sum + (e.file?.size || 0), 0)))
+const fileCountLabel = computed(() => `${visibleQueue.value.length} 個檔案`)
+const totalSizeLabel = computed(() => formatBytes(visibleQueue.value.reduce((sum, e) => sum + (e.file?.size || 0), 0)))
+const heroTitle = computed(() => (activeTab.value === 'image' ? '轉換圖片' : '轉換檔案'))
+const heroDesc = computed(() =>
+  activeTab.value === 'image'
+    ? '拖放圖片檔案，選擇目標格式，即可完成轉換。'
+    : '拖放影片或音訊檔案，選擇目標格式，即可在瀏覽器中完成轉換。',
+)
 const supportHint = computed(() => {
-  if (!formats.value.length) return ''
-  const exts = [...new Set(formats.value.map((f) => f.ext.toUpperCase()))]
+  const list = activeTab.value === 'image' ? imageFormats.value : [...videoFormats.value, ...audioFormats.value]
+  if (!list.length) return ''
+  const exts = [...new Set(list.map((f) => f.ext.toUpperCase()))]
   return `${exts.slice(0, 8).join(' · ')} 等共 ${exts.length} 種格式，單檔最高 ${MAX_UPLOAD_MB}MB`
 })
 
@@ -152,6 +165,14 @@ function isVideoEntry(entry) {
   return entry.file.type.startsWith('video/')
 }
 
+function isImageEntry(entry) {
+  return entry.file.type.startsWith('image/')
+}
+
+function entryTabKind(entry) {
+  return isImageEntry(entry) ? 'image' : 'video'
+}
+
 onMounted(async () => {
   applyTheme()
 
@@ -175,6 +196,7 @@ onMounted(async () => {
     if (!res.ok) throw new Error('無法載入格式清單')
     formats.value = await res.json()
     defaultFormat.value = formats.value.find((f) => f.kind === 'video')?.id ?? formats.value[0]?.id ?? ''
+    defaultImageFormat.value = formats.value.find((f) => f.kind === 'image')?.id ?? ''
   } catch {
     // 載入失敗時格式清單留空，加入檔案後操作會自然失敗並顯示錯誤
   }
@@ -193,7 +215,7 @@ function onCardLeave(el, done) {
   gsap.to(el, { x: 24, autoAlpha: 0, duration: 0.28, ease: 'power1.in', onComplete: done })
 }
 
-function makeEntry(file) {
+function makeEntry(file, formatId) {
   localIdCounter += 1
   return {
     localId: `f${localIdCounter}`,
@@ -201,7 +223,7 @@ function makeEntry(file) {
     previewUrl: URL.createObjectURL(file),
     name: file.name,
     sizeLabel: formatBytes(file.size),
-    format: defaultFormat.value,
+    format: formatId,
     settingsOpen: false,
     tuning: {
       resolution: '',
@@ -227,6 +249,7 @@ function makeEntry(file) {
       brightness: '',
       contrast: '',
       saturation: '',
+      quality: '',
     },
     status: 'idle',
     progress: 0,
@@ -236,11 +259,28 @@ function makeEntry(file) {
   }
 }
 
+// 分頁只是前端的第一道防線（accept 屬性 + 這裡的 mimetype 過濾），真正的
+// 圖片/影音判定以後端 sharp/ffprobe 探測結果為準，避免副檔名造假繞過
 function addFiles(fileList) {
-  const accepted = Array.from(fileList).filter(
-    (file) => file.type.startsWith('video/') || file.type.startsWith('audio/'),
-  )
-  queue.value.push(...accepted.map(makeEntry))
+  const isImageTab = activeTab.value === 'image'
+  const predicate = isImageTab
+    ? (file) => file.type.startsWith('image/')
+    : (file) => file.type.startsWith('video/') || file.type.startsWith('audio/')
+
+  const all = Array.from(fileList)
+  const accepted = all.filter(predicate)
+  const initialFormat = isImageTab ? defaultImageFormat.value : defaultFormat.value
+  queue.value.push(...accepted.map((file) => makeEntry(file, initialFormat)))
+
+  if (accepted.length < all.length) {
+    rejectionNotice.value = isImageTab
+      ? '已略過非圖片檔案，請切換到「轉換影片」分頁上傳'
+      : '已略過非影音檔案，請切換到「轉換圖片」分頁上傳'
+    clearTimeout(rejectionTimer)
+    rejectionTimer = setTimeout(() => {
+      rejectionNotice.value = ''
+    }, 4000)
+  }
 }
 
 function onInputChange(event) {
@@ -258,8 +298,12 @@ function onDrop(event) {
 }
 
 function applyFormatToIdle(formatId) {
-  defaultFormat.value = formatId
-  for (const entry of queue.value) {
+  if (activeTab.value === 'image') {
+    defaultImageFormat.value = formatId
+  } else {
+    defaultFormat.value = formatId
+  }
+  for (const entry of visibleQueue.value) {
     if (entry.status === 'idle') entry.format = formatId
   }
 }
@@ -269,8 +313,11 @@ function toggleSettings(entry) {
 }
 
 function applyTuningToAll(entry) {
+  // 圖片跟影音的進階選項語意完全不同（CRF/位元率 vs 縮放/畫質），
+  // 只套用到同一種類型的檔案，避免把不相干的設定塞進另一分頁的檔案
   for (const other of queue.value) {
     if (other.localId === entry.localId) continue
+    if (entryTabKind(other) !== entryTabKind(entry)) continue
     other.tuning = { ...entry.tuning }
   }
 }
@@ -317,6 +364,7 @@ function buildFormData(entry) {
   if (t.brightness) formData.append('brightness', t.brightness)
   if (t.contrast) formData.append('contrast', t.contrast)
   if (t.saturation) formData.append('saturation', t.saturation)
+  if (t.quality) formData.append('quality', t.quality)
   return formData
 }
 
@@ -376,13 +424,13 @@ function pollStatus(entry) {
 }
 
 function convertAll() {
-  for (const entry of queue.value) {
+  for (const entry of visibleQueue.value) {
     if (entry.status === 'idle' || entry.status === 'error') startConversion(entry)
   }
 }
 
 function downloadAll() {
-  for (const entry of queue.value) {
+  for (const entry of visibleQueue.value) {
     if (entry.status === 'done' && entry.downloadUrl) {
       const link = document.createElement('a')
       link.href = entry.downloadUrl
@@ -416,12 +464,35 @@ function downloadAll() {
     </header>
 
     <main class="page">
+      <div class="tabs" role="tablist">
+        <button
+          class="tab"
+          type="button"
+          role="tab"
+          :class="{ active: activeTab === 'video' }"
+          :aria-selected="activeTab === 'video'"
+          @click="activeTab = 'video'"
+        >
+          轉換影片
+        </button>
+        <button
+          class="tab"
+          type="button"
+          role="tab"
+          :class="{ active: activeTab === 'image' }"
+          :aria-selected="activeTab === 'image'"
+          @click="activeTab = 'image'"
+        >
+          轉換圖片
+        </button>
+      </div>
+
       <div class="hero">
         <div class="hero-text">
-          <h1>轉換檔案</h1>
-          <p>拖放影片或音訊檔案，選擇目標格式，即可在瀏覽器中完成轉換。</p>
+          <h1>{{ heroTitle }}</h1>
+          <p>{{ heroDesc }}</p>
         </div>
-        <div class="hero-badge" v-if="queue.length">{{ fileCountLabel }} · {{ totalSizeLabel }}</div>
+        <div class="hero-badge" v-if="visibleQueue.length">{{ fileCountLabel }} · {{ totalSizeLabel }}</div>
       </div>
 
       <button
@@ -443,42 +514,60 @@ function downloadAll() {
           class="visually-hidden"
           type="file"
           multiple
-          accept="video/*,audio/*"
+          :accept="activeTab === 'image' ? 'image/*' : 'video/*,audio/*'"
           @change="onInputChange"
           @click.stop
         />
       </button>
 
+      <p class="rejection-notice" v-if="rejectionNotice">{{ rejectionNotice }}</p>
+
       <div class="chips-bar" v-if="formats.length">
         <span class="chips-label">預設輸出格式</span>
-        <div class="chips-group">
-          <button
-            v-for="f in videoFormats"
-            :key="f.id"
-            type="button"
-            class="chip"
-            :class="{ active: defaultFormat === f.id }"
-            @click="applyFormatToIdle(f.id)"
-          >
-            {{ f.label }}
-          </button>
-        </div>
-        <span class="chips-divider" v-if="videoFormats.length && audioFormats.length"></span>
-        <div class="chips-group">
-          <button
-            v-for="f in audioFormats"
-            :key="f.id"
-            type="button"
-            class="chip"
-            :class="{ active: defaultFormat === f.id }"
-            @click="applyFormatToIdle(f.id)"
-          >
-            {{ f.label }}
-          </button>
-        </div>
+        <template v-if="activeTab === 'image'">
+          <div class="chips-group">
+            <button
+              v-for="f in imageFormats"
+              :key="f.id"
+              type="button"
+              class="chip"
+              :class="{ active: defaultImageFormat === f.id }"
+              @click="applyFormatToIdle(f.id)"
+            >
+              {{ f.label }}
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <div class="chips-group">
+            <button
+              v-for="f in videoFormats"
+              :key="f.id"
+              type="button"
+              class="chip"
+              :class="{ active: defaultFormat === f.id }"
+              @click="applyFormatToIdle(f.id)"
+            >
+              {{ f.label }}
+            </button>
+          </div>
+          <span class="chips-divider" v-if="videoFormats.length && audioFormats.length"></span>
+          <div class="chips-group">
+            <button
+              v-for="f in audioFormats"
+              :key="f.id"
+              type="button"
+              class="chip"
+              :class="{ active: defaultFormat === f.id }"
+              @click="applyFormatToIdle(f.id)"
+            >
+              {{ f.label }}
+            </button>
+          </div>
+        </template>
       </div>
 
-      <div class="queue-header" v-if="queue.length">
+      <div class="queue-header" v-if="visibleQueue.length">
         <span>佇列</span>
         <span class="queue-header-count">{{ fileCountLabel }}</span>
       </div>
@@ -486,16 +575,20 @@ function downloadAll() {
       <TransitionGroup
         tag="ul"
         class="queue-list"
-        v-if="queue.length"
+        v-if="visibleQueue.length"
         :css="false"
         @enter="onCardEnter"
         @leave="onCardLeave"
       >
-        <li v-for="entry in queue" :key="entry.localId" class="queue-card" :data-local-id="entry.localId">
+        <li v-for="entry in visibleQueue" :key="entry.localId" class="queue-card" :data-local-id="entry.localId">
           <div class="queue-row">
-            <div class="thumb" :class="isVideoEntry(entry) ? 'thumb-video' : 'thumb-audio'">
+            <div
+              class="thumb"
+              :class="isImageEntry(entry) ? 'thumb-image' : isVideoEntry(entry) ? 'thumb-video' : 'thumb-audio'"
+            >
+              <img v-if="isImageEntry(entry)" class="thumb-image-el" :src="entry.previewUrl" alt="" />
               <video
-                v-if="isVideoEntry(entry)"
+                v-else-if="isVideoEntry(entry)"
                 class="thumb-video-el"
                 :src="entry.previewUrl"
                 muted
@@ -521,12 +614,19 @@ function downloadAll() {
                   v-model="entry.format"
                   :disabled="entry.status === 'processing' || entry.status === 'queued'"
                 >
-                  <optgroup label="影片" v-if="videoFormats.length">
-                    <option v-for="f in videoFormats" :key="f.id" :value="f.id">{{ f.label }}</option>
-                  </optgroup>
-                  <optgroup label="音訊" v-if="audioFormats.length">
-                    <option v-for="f in audioFormats" :key="f.id" :value="f.id">{{ f.label }}</option>
-                  </optgroup>
+                  <template v-if="isImageEntry(entry)">
+                    <optgroup label="圖片" v-if="imageFormats.length">
+                      <option v-for="f in imageFormats" :key="f.id" :value="f.id">{{ f.label }}</option>
+                    </optgroup>
+                  </template>
+                  <template v-else>
+                    <optgroup label="影片" v-if="videoFormats.length">
+                      <option v-for="f in videoFormats" :key="f.id" :value="f.id">{{ f.label }}</option>
+                    </optgroup>
+                    <optgroup label="音訊" v-if="audioFormats.length">
+                      <option v-for="f in audioFormats" :key="f.id" :value="f.id">{{ f.label }}</option>
+                    </optgroup>
+                  </template>
                 </select>
                 <span class="select-arrow">▼</span>
               </div>
@@ -571,7 +671,37 @@ function downloadAll() {
             </div>
           </div>
 
-          <div class="settings-panel" v-if="entry.settingsOpen">
+          <div class="settings-panel" v-if="entry.settingsOpen && isImageEntry(entry)">
+            <div class="settings-grid">
+              <label class="settings-field">
+                <span class="settings-label">縮放</span>
+                <div class="select-wrap">
+                  <select class="settings-select" v-model="entry.tuning.resolution">
+                    <option v-for="opt in RESOLUTION_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </label>
+              <label class="settings-field">
+                <span class="settings-label">畫質 (1-100)</span>
+                <input class="settings-input" type="number" min="1" max="100" placeholder="自動" v-model="entry.tuning.quality" />
+              </label>
+              <div class="settings-field settings-field-wide settings-toggles">
+                <label class="toggle">
+                  <input type="checkbox" v-model="entry.tuning.stripMetadata" class="visually-hidden" />
+                  <span class="toggle-track" :class="{ on: entry.tuning.stripMetadata }"><span class="toggle-knob"></span></span>
+                  移除中繼資料
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-footer">
+              <button class="btn-text" type="button" @click="applyTuningToAll(entry)">套用到所有檔案</button>
+              <button class="btn-accent-soft" type="button" @click="toggleSettings(entry)">儲存設定</button>
+            </div>
+          </div>
+
+          <div class="settings-panel" v-else-if="entry.settingsOpen">
             <div class="settings-grid">
               <label class="settings-field">
                 <span class="settings-label">解析度</span>
@@ -732,7 +862,7 @@ function downloadAll() {
       </TransitionGroup>
     </main>
 
-    <footer class="site-footer" v-if="queue.length">
+    <footer class="site-footer" v-if="visibleQueue.length">
       <div class="footer-inner">
         <div class="footer-stats">
           <span class="stat"><span class="status-dot status-dot-done"></span>{{ doneCount }} 完成</span>
@@ -1002,6 +1132,46 @@ function downloadAll() {
   opacity: 0;
 }
 
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-2);
+  width: fit-content;
+}
+
+.tab {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--text-mute);
+  transition: 0.15s;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 3px 12px color-mix(in oklab, var(--accent) 32%, transparent);
+}
+
+.rejection-notice {
+  margin: -12px 0 22px;
+  font-size: 12.5px;
+  color: var(--text-mute);
+}
+
 .chips-bar {
   display: flex;
   align-items: center;
@@ -1136,6 +1306,16 @@ function downloadAll() {
 
 .thumb-audio {
   background: var(--bg-3);
+}
+
+.thumb-image {
+  background: var(--bg-3);
+}
+
+.thumb-image-el {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .thumb-bars {

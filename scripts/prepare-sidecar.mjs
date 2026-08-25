@@ -46,6 +46,10 @@ rmSync(resourceDir, { recursive: true, force: true });
 mkdirSync(resourceDir, { recursive: true });
 cpSync(join(backend, 'dist'), join(resourceDir, 'dist'), { recursive: true });
 cpSync(join(prodInstallDir, 'node_modules'), join(resourceDir, 'node_modules'), { recursive: true });
+// node_modules/.bin is CLI symlinks (e.g. semver) never invoked at runtime —
+// some point at packages not present in a prod-only install, and Tauri's
+// bundler refuses to package a dangling symlink
+rmSync(join(resourceDir, 'node_modules', '.bin'), { recursive: true, force: true });
 copyFileSync(join(backend, 'package.json'), join(resourceDir, 'package.json'));
 rmSync(prodInstallDir, { recursive: true, force: true });
 console.log(`backend resources -> ${resourceDir}`);

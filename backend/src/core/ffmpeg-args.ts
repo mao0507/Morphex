@@ -39,6 +39,14 @@ export function validateCombination(
   inputKind: MediaKind,
   targetFormat: FormatDefinition,
 ): void {
+  // 圖片一律走獨立的 sharp pipeline（見 core/image-convert.ts），
+  // 影音來源永遠不該落到這個 ffmpeg 分支還去組出圖片格式的參數
+  if (targetFormat.kind === 'image') {
+    throw new ConversionError(
+      'UNSUPPORTED_COMBINATION',
+      '影音檔案無法轉換為圖片格式',
+    );
+  }
   if (inputKind === 'audio' && targetFormat.kind === 'video') {
     throw new ConversionError(
       'UNSUPPORTED_COMBINATION',

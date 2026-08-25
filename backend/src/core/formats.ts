@@ -169,6 +169,41 @@ export const FORMATS: FormatDefinition[] = [
     audioCodec: 'pcm_s16be',
     mimeTypes: ['audio/aiff', 'audio/x-aiff'],
   },
+  {
+    id: 'jpg',
+    label: 'JPEG',
+    ext: 'jpg',
+    kind: 'image',
+    mimeTypes: ['image/jpeg'],
+  },
+  {
+    id: 'png',
+    label: 'PNG',
+    ext: 'png',
+    kind: 'image',
+    mimeTypes: ['image/png'],
+  },
+  {
+    id: 'webp',
+    label: 'WebP',
+    ext: 'webp',
+    kind: 'image',
+    mimeTypes: ['image/webp'],
+  },
+  {
+    id: 'tiff',
+    label: 'TIFF',
+    ext: 'tiff',
+    kind: 'image',
+    mimeTypes: ['image/tiff'],
+  },
+  {
+    id: 'avif',
+    label: 'AVIF',
+    ext: 'avif',
+    kind: 'image',
+    mimeTypes: ['image/avif'],
+  },
 ];
 
 export function getFormatById(id: string): FormatDefinition | undefined {
