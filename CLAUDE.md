@@ -6,7 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MediaForge: web-based media conversion tool. Upload file(s) → pick output format and optional advanced options (resolution/frame rate/bitrate/trim/normalize/strip metadata) → async ffmpeg conversion with progress polling → download link. Multi-file queue is client-orchestrated (one independent job per file); the backend has no DB, no auth, no persistent history — jobs live in an in-memory map and are swept after 30 minutes (see `ConvertFlow_MVP_開發計畫.md` for the original single-file MVP baseline this evolved from).
 
-Monorepo, two independent npm projects: `backend/` (NestJS) and `frontend/` (Vue 3 + Vite). No shared root package.json.
+Monorepo, two independent npm projects: `backend/` (NestJS) and `frontend/` (Vue 3 + Vite), plus a `src-tauri/` desktop wrapper (see Desktop app section below) with its own minimal root `package.json` (just the Tauri CLI — not a shared workspace root for backend/frontend).
+
+## Desktop app (Tauri, `src-tauri/`)
+
+Wraps the existing web app for desktop distribution — no rewrite of `backend/core` (that stays framework-free per the constraint above; Tauri here just replaces "open browser + run two dev servers" with one packaged app). Approach: **sidecar**, not a Rust port.
+
+- `frontend/dist` is loaded as the webview's static content (`tauri.conf.json` → `build.frontendDist`). No `VITE_API_BASE_URL` override needed — its default (`http://localhost:3000`) already matches the sidecar's fixed port.
+- The NestJS backend is *not* rewritten in Rust. It's run as a Tauri "sidecar": `scripts/prepare-sidecar.mjs` copies the current Node binary to `src-tauri/binaries/backend-<target-triple>` (Tauri's required sidecar naming convention) and copies `backend/dist` + `backend/node_modules` + `package.json` into `src-tauri/resources/backend/`. Both are gitignored — regenerate with `npm run prepare-sidecar` (or just `npm run dev`/`npm run build`, which run it first).
+- `src-tauri/src/lib.rs` spawns that sidecar on app startup via `tauri-plugin-shell`, running `dist/main.js` with `PORT=3000` and `cwd` set to the OS-appropriate app-data dir (`app.path().app_data_dir()`) — **not** the read-only bundled Resources dir — because `backend/src/conversion/storage.paths.ts` derives `tmp/uploads`/`tmp/outputs` from `process.cwd()`. The child is killed on `ExitRequested`.
+- Root `package.json` only holds `@tauri-apps/cli`; run `npm run dev` / `npm run build` from the repo root (not from `backend/` or `frontend/`) to drive the desktop app.
+- This reuses the Node binary itself as the sidecar (no `pkg`/`nexe` step) specifically so `@ffmpeg-installer/ffmpeg` / `@ffprobe-installer/ffprobe`'s own path resolution keeps working unmodified. Trade-off: bundles the full `backend/node_modules` (incl. devDeps like jest) into the app — fine for now, but if app size becomes a concern, rebuild `resources/backend/node_modules` from a `npm ci --omit=dev` copy instead.
 
 ## Commands
 
