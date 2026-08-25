@@ -1,0 +1,61 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+
+  build-desktop:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: install root deps
+        run: npm ci
+
+      - name: install backend deps
+        working-directory: backend
+        run: npm ci
+
+      - name: install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: prepare sidecar (node binary + prod-only backend build)
+        run: npm run prepare-sidecar
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ needs.release-please.outputs.tag_name }}
+          releaseName: 'MediaForge ${{ needs.release-please.outputs.tag_name }}'
+          releaseDraft: false
+          prerelease: false

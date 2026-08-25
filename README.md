@@ -62,6 +62,23 @@ npm test          # 單元測試（core 邏輯）+ 整合測試（呼叫真實 f
 npm run test:e2e  # API 端到端測試（含暫存清理驗證）
 ```
 
+## 桌面應用（Tauri）
+
+`src-tauri/` 把前後端包成一個桌面 app（backend 以 sidecar 方式隨 app 啟停，細節見 `CLAUDE.md`）。
+
+```bash
+npm install          # repo 根目錄，只裝 Tauri CLI
+npm run dev           # 開發模式
+npm run build          # 打包安裝檔（.dmg / .msi），輸出於 src-tauri/target/release/bundle/
+```
+
+Windows/macOS 安裝檔另由 GitHub Actions（`release-please` 合併版本 PR 後自動觸發）建置並掛在 GitHub Release 上。
+
+**目前未簽章**，直接下載執行會被系統擋下，第一次開啟需要手動放行：
+
+- **macOS**：對 app 「右鍵 → 打開」，或「系統設定 → 隱私權與安全性」裡找到「已封鎖」提示按「仍要打開」
+- **Windows**：SmartScreen 跳出「Windows 已保護您的電腦」時，點「其他資訊 → 仍要執行」
+
 ## 已知限制（MVP 範圍）
 
 - 轉檔為同步阻塞處理，無背景佇列、無即時進度條

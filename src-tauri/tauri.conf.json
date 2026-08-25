@@ -2,12 +2,12 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "MediaForge",
   "version": "0.1.0",
-  "identifier": "com.mediaforge.app",
+  "identifier": "com.mediaforge.desktop",
   "build": {
     "frontendDist": "../frontend/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm --prefix frontend run dev",
-    "beforeBuildCommand": "npm --prefix frontend run build"
+    "beforeDevCommand": "cross-env VITE_API_BASE_URL=http://localhost:47823 npm --prefix frontend run dev",
+    "beforeBuildCommand": "cross-env VITE_API_BASE_URL=http://localhost:47823 npm --prefix frontend run build"
   },
   "app": {
     "windows": [
@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:47823; img-src 'self' data:; media-src 'self' blob:; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'"
     }
   },
   "bundle": {
