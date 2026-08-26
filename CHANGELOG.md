@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/mao0507/Morphex/compare/morphex-v0.3.0...morphex-v0.3.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* 更新版重新產生 updater 簽章 key ([a7d8b07](https://github.com/mao0507/Morphex/commit/a7d8b079e2fd94e04afb14ad62145e31cb47cf97))
+
 ## [0.3.0](https://github.com/mao0507/Morphex/compare/morphex-v0.2.2...morphex-v0.3.0) (2026-08-26)
 
 
