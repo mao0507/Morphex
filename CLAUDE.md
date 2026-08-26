@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-MediaForge: web-based media conversion tool. Upload file(s) → pick output format and optional advanced options (resolution/frame rate/bitrate/trim/normalize/strip metadata) → async ffmpeg conversion with progress polling → download link. Multi-file queue is client-orchestrated (one independent job per file); the backend has no DB, no auth, no persistent history — jobs live in an in-memory map and are swept after 30 minutes (see `ConvertFlow_MVP_開發計畫.md` for the original single-file MVP baseline this evolved from).
+Morphex: web-based media conversion tool. Upload file(s) → pick output format and optional advanced options (resolution/frame rate/bitrate/trim/normalize/strip metadata) → async ffmpeg conversion with progress polling → download link. Multi-file queue is client-orchestrated (one independent job per file); the backend has no DB, no auth, no persistent history — jobs live in an in-memory map and are swept after 30 minutes (see `ConvertFlow_MVP_開發計畫.md` for the original single-file MVP baseline this evolved from).
 
 Monorepo, two independent npm projects: `backend/` (NestJS) and `frontend/` (Vue 3 + Vite), plus a `src-tauri/` desktop wrapper (see Desktop app section below) with its own minimal root `package.json` (just the Tauri CLI — not a shared workspace root for backend/frontend).
 

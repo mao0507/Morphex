@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "MediaForge",
+  "productName": "Morphex",
   "version": "0.1.0",
-  "identifier": "com.mediaforge.desktop",
+  "identifier": "com.morphex.desktop",
   "build": {
     "frontendDist": "../frontend/dist",
     "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "MediaForge",
+        "title": "Morphex",
         "width": 1080,
         "height": 760,
         "resizable": true,

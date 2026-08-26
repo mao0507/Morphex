@@ -1,4 +1,4 @@
-# MediaForge 後端
+# Morphex 後端
 
 NestJS 寫的轉檔 API。實際轉檔邏輯獨立放在 `src/core/`，不依賴框架（細節見根目錄 `CLAUDE.md`）。
 

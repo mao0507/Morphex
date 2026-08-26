@@ -1,4 +1,4 @@
-# MediaForge 前端
+# Morphex 前端
 
 Vue 3 + Vite 寫的單頁上傳/轉檔介面。無路由、無狀態管理套件，單一元件 `src/App.vue`。
 

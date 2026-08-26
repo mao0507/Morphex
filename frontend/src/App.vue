@@ -95,7 +95,7 @@ const defaultImageFormat = ref('')
 const activeTab = ref('video') // 'video' | 'image'
 const rejectionNotice = ref('')
 const isDragging = ref(false)
-const theme = ref(localStorage.getItem('mediaforge-theme') || systemTheme())
+const theme = ref(localStorage.getItem('morphex-theme') || systemTheme())
 const fileInputRef = ref(null)
 const shellRef = ref(null)
 
@@ -136,7 +136,7 @@ function systemTheme() {
 
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', theme.value)
-  localStorage.setItem('mediaforge-theme', theme.value)
+  localStorage.setItem('morphex-theme', theme.value)
 }
 
 function toggleTheme() {
@@ -448,8 +448,8 @@ function downloadAll() {
     <header class="site-header">
       <div class="header-inner">
         <div class="brand-group">
-          <span class="brand-mark">⇄</span>
-          <span class="brand-name">MediaForge</span>
+          <img class="brand-mark" src="/logo.png" alt="Morphex" />
+          <span class="brand-name">Morphex</span>
           <span class="beta-tag">BETA</span>
         </div>
         <div class="header-actions">
@@ -919,12 +919,7 @@ function downloadAll() {
   width: 30px;
   height: 30px;
   border-radius: 9px;
-  background: var(--accent);
-  display: grid;
-  place-items: center;
-  font-family: var(--mono);
-  font-size: 15px;
-  color: #fff;
+  object-fit: cover;
   box-shadow: 0 4px 16px color-mix(in oklab, var(--accent) 45%, transparent);
 }
 

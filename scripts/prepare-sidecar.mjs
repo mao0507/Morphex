@@ -36,7 +36,7 @@ console.log('building backend...');
 execSync('npm run build', { cwd: backend, stdio: 'inherit' });
 
 console.log('installing production-only backend deps...');
-const prodInstallDir = mkdtempSync(join(tmpdir(), 'mediaforge-backend-prod-'));
+const prodInstallDir = mkdtempSync(join(tmpdir(), 'morphex-backend-prod-'));
 copyFileSync(join(backend, 'package.json'), join(prodInstallDir, 'package.json'));
 copyFileSync(join(backend, 'package-lock.json'), join(prodInstallDir, 'package-lock.json'));
 execSync('npm ci --omit=dev', { cwd: prodInstallDir, stdio: 'inherit' });
