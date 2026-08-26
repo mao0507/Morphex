@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/mao0507/Morphex/compare/morphex-v0.2.0...morphex-v0.2.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* 重建 backend lockfile 修正 sharp optional deps 版本不同步 ([2263dc3](https://github.com/mao0507/Morphex/commit/2263dc3d4bef9320677ec1b7699cd87bc58169b0))
+
 ## [0.2.0](https://github.com/mao0507/Morphex/compare/morphex-v0.1.0...morphex-v0.2.0) (2026-08-26)
 
 
