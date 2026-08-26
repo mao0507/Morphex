@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/mao0507/Morphex/compare/morphex-v0.2.1...morphex-v0.2.2) (2026-08-26)
+
+
+### Bug Fixes
+
+* 用官方 registry 重建全部 lockfile 修正 optional deps 不一致 ([301d527](https://github.com/mao0507/Morphex/commit/301d52771c9575ea06e21d460c5ef5f2bc382247))
+
 ## [0.2.1](https://github.com/mao0507/Morphex/compare/morphex-v0.2.0...morphex-v0.2.1) (2026-08-26)
 
 
