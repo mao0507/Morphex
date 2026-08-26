@@ -49,5 +49,5 @@ export interface ConvertTuning {
   brightness?: number; // -1..1
   contrast?: number; // 0..2
   saturation?: number; // 0..3
-  quality?: number; // 1-100，僅圖片格式使用（jpeg/webp/avif/tiff 壓縮品質）
+  quality?: number; // 1-100，僅圖片格式使用（jpeg/webp/avif/tiff 壓縮品質；png 會連帶開啟調色盤量化）
 }

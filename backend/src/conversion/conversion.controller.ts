@@ -37,7 +37,7 @@ export class ConversionController {
     if (!file) {
       throw new BadRequestException('請上傳檔案');
     }
-    if (!body.format || typeof body.format !== 'string') {
+    if (body.format !== undefined && typeof body.format !== 'string') {
       throw new BadRequestException('請指定輸出格式');
     }
 

@@ -1,11 +1,12 @@
 import sharp from 'sharp';
 import { spawnSync } from 'child_process';
-import { mkdtempSync, existsSync, rmSync } from 'fs';
+import { mkdtempSync, existsSync, rmSync, statSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { convertFile } from './convert';
 import { ConversionError } from './errors';
 import { FFMPEG_PATH } from './ffmpeg-binaries';
+import { formatIdForSharpFormat } from './image-convert';
 
 // 這組測試實際呼叫本機 sharp/ffmpeg，驗證圖片 pipeline 跟既有影音 pipeline 的分流行為
 describe('convertFile - 圖片 pipeline（整合測試）', () => {
@@ -80,6 +81,44 @@ describe('convertFile - 圖片 pipeline（整合測試）', () => {
     expect(meta.width).toBe(32);
     expect(meta.height).toBe(24);
   }, 15_000);
+
+  it('png 壓縮模式（quality + palette）：輸出檔案明顯變小', async () => {
+    const inputPath = join(workDir, 'sample-noisy.png');
+    const outputLossless = join(workDir, 'sample-noisy-lossless.png');
+    const outputCompressed = join(workDir, 'sample-noisy-compressed.png');
+
+    // 用雜訊圖而非單色圖，單色圖不管有沒有 palette 量化都會被 PNG 壓到差不多小，
+    // 沒辦法看出兩者差異
+    const noise = Buffer.alloc(200 * 150 * 3);
+    for (let i = 0; i < noise.length; i++)
+      noise[i] = Math.floor(Math.random() * 256);
+    await sharp(noise, { raw: { width: 200, height: 150, channels: 3 } })
+      .png()
+      .toFile(inputPath);
+
+    await convertFile({
+      inputPath,
+      outputPath: outputLossless,
+      targetFormatId: 'png',
+    });
+    await convertFile({
+      inputPath,
+      outputPath: outputCompressed,
+      targetFormatId: 'png',
+      tuning: { quality: 50 },
+    });
+
+    const losslessSize = statSync(outputLossless).size;
+    const compressedSize = statSync(outputCompressed).size;
+    expect(compressedSize).toBeLessThan(losslessSize);
+  }, 15_000);
+
+  it('formatIdForSharpFormat：sharp 偵測到的格式對應回 FORMATS id（壓縮模式自動選格式用）', () => {
+    expect(formatIdForSharpFormat('jpeg')).toBe('jpg');
+    expect(formatIdForSharpFormat('png')).toBe('png');
+    expect(formatIdForSharpFormat('webp')).toBe('webp');
+    expect(formatIdForSharpFormat('heif')).toBeUndefined();
+  });
 
   it('圖片轉影片格式：丟出 ConversionError(UNSUPPORTED_COMBINATION)', async () => {
     const inputPath = join(workDir, 'sample-bad-target.jpg');

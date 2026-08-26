@@ -10,6 +10,18 @@ const SHARP_FORMAT: Record<string, keyof sharp.FormatEnum | 'avif'> = {
   avif: 'avif',
 };
 
+const FORMAT_ID_BY_SHARP_FORMAT = Object.fromEntries(
+  Object.entries(SHARP_FORMAT).map(([id, sharpFormat]) => [sharpFormat, id]),
+);
+
+// 圖片壓縮模式（未指定目標格式）用來把 sharp 讀出的來源格式反查回 FORMATS 的 id，
+// 讀不出來或不是我們支援的圖片格式就回傳 undefined，交由呼叫端要求使用者手動選格式
+export function formatIdForSharpFormat(
+  sharpFormat: string,
+): string | undefined {
+  return FORMAT_ID_BY_SHARP_FORMAT[sharpFormat];
+}
+
 export interface SharpConversionPlan {
   engine: 'sharp';
   inputPath: string;
@@ -72,9 +84,15 @@ export async function runSharpJob(
     }
 
     const quality = plan.tuning.quality;
+    // PNG 是無損格式，quality 選項本身無效；要真的壓縮須搭配 palette（調色盤量化，
+    // 效果類似 pngquant/TinyPNG），所以目標是 png 時一併開啟
     pipeline = pipeline.toFormat(
       sharpFormat,
-      quality !== undefined ? { quality } : undefined,
+      quality !== undefined
+        ? sharpFormat === 'png'
+          ? { quality, palette: true }
+          : { quality }
+        : undefined,
     );
 
     await pipeline.toFile(plan.outputPath);

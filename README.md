@@ -2,6 +2,10 @@
 
 網頁版影音／圖片轉檔工具。多檔案批次上傳、選擇輸出格式與進階選項、非同步轉檔並即時顯示進度、完成後下載結果。也可包成桌面應用（見下方）。
 
+## 下載
+
+不想自己架設，直接用桌面版：前往 [Releases](https://github.com/mao0507/Morphex/releases) 下載最新的 `.dmg`（macOS）或 `.msi`（Windows）安裝檔。目前未簽章，第一次開啟需要手動放行，見「桌面應用」章節說明。
+
 ## 技術棧
 
 - 前端：Vue 3 + Vite（`frontend/`）
@@ -67,7 +71,8 @@ npm run dev   # 預設 http://localhost:5173
 
 - `GET /formats`：取得支援的輸出格式清單（含 `id`/`label`/`ext`/`kind`）
 - `POST /convert`：`multipart/form-data`，快速完成格式驗證與探測後立即回應，實際轉檔在背景進行
-  - 必要欄位：`file`（檔案）、`format`（目標格式 id）
+  - 必要欄位：`file`（檔案）
+  - `format`（目標格式 id）：影音檔案必填；圖片檔案選填——不帶就是「壓縮模式」，後端自動偵測來源格式當目標格式（只壓縮、不換格式）
   - 進階選項欄位（皆選填，未提供則使用格式/來源預設值）：
 
     | 欄位 | 說明 | 適用 |
@@ -91,7 +96,7 @@ npm run dev   # 預設 http://localhost:5173
     | `deinterlace` | 去交錯，`true`/未提供 | 影片 |
     | `denoise` | 降噪，`true`/未提供 | 影片 |
     | `brightness` / `contrast` / `saturation` | 畫面調整 | 影片 |
-    | `quality` | 壓縮品質 1-100 | 圖片 |
+    | `quality` | 壓縮品質 1-100（PNG 會連帶開啟調色盤量化才有效果） | 圖片 |
 
   - 回應 `202 { id, status: 'queued'｜'processing', progress }`；格式錯誤／不支援的轉換組合／檔案損毀則同步回 4xx
 - `GET /convert/:id/status`：輪詢轉檔進度，回應 `{ id, status, progress }`，完成時多帶 `{ downloadUrl, ext }`，失敗時多帶 `{ error: { code, message } }`；未知 id 回 404

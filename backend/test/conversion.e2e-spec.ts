@@ -5,6 +5,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import request from 'supertest';
+import sharp from 'sharp';
 import { AppModule } from '../src/app.module';
 import { FFMPEG_PATH } from '../src/core/ffmpeg-binaries';
 
@@ -13,6 +14,7 @@ describe('Conversion API (e2e)', () => {
   let workDir: string;
   let sampleVideoPath: string;
   let sampleAudioPath: string;
+  let sampleImagePath: string;
   let brokenFilePath: string;
 
   beforeAll(async () => {
@@ -26,6 +28,7 @@ describe('Conversion API (e2e)', () => {
     workDir = mkdtempSync(join(tmpdir(), 'convertflow-e2e-'));
     sampleVideoPath = join(workDir, 'sample.mp4');
     sampleAudioPath = join(workDir, 'sample.mp3');
+    sampleImagePath = join(workDir, 'sample.jpg');
     brokenFilePath = join(workDir, 'broken.mp4');
 
     spawnSync(FFMPEG_PATH, [
@@ -57,6 +60,17 @@ describe('Conversion API (e2e)', () => {
       sampleAudioPath,
     ]);
     writeFileSync(brokenFilePath, 'not a real media file');
+
+    await sharp({
+      create: {
+        width: 32,
+        height: 24,
+        channels: 3,
+        background: { r: 10, g: 120, b: 200 },
+      },
+    })
+      .jpeg()
+      .toFile(sampleImagePath);
   });
 
   afterAll(async () => {
@@ -146,6 +160,26 @@ describe('Conversion API (e2e)', () => {
     expect(status.status).toBe('done');
     await request(app.getHttpServer()).get(status.downloadUrl!).expect(200);
   }, 30_000);
+
+  it('壓縮模式（圖片不帶 format）：自動用來源格式，輸出仍是 jpg', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/convert')
+      .attach('file', sampleImagePath)
+      .field('quality', '50')
+      .expect(202);
+
+    const status = await waitForJobDone(res.body.id);
+    expect(status.status).toBe('done');
+    expect(status.ext).toBe('jpg');
+    await request(app.getHttpServer()).get(status.downloadUrl!).expect(200);
+  }, 15_000);
+
+  it('不帶 format 的非圖片檔案（影片）：回傳 400', async () => {
+    await request(app.getHttpServer())
+      .post('/convert')
+      .attach('file', sampleVideoPath)
+      .expect(400);
+  }, 15_000);
 
   it('音訊轉影片：回傳 400', async () => {
     await request(app.getHttpServer())

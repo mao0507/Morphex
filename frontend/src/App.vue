@@ -224,6 +224,7 @@ function makeEntry(file, formatId) {
     name: file.name,
     sizeLabel: formatBytes(file.size),
     format: formatId,
+    compressMode: false,
     settingsOpen: false,
     tuning: {
       resolution: '',
@@ -312,6 +313,18 @@ function toggleSettings(entry) {
   entry.settingsOpen = !entry.settingsOpen
 }
 
+const DEFAULT_COMPRESS_QUALITY = '80'
+
+// 壓縮模式：不換格式，只是把檔案變小；開啟時不送 format 給後端，後端會自動用
+// 來源格式當目標格式。第一次開啟且使用者還沒動過畫質滑桿時帶入預設值，
+// 不然滑桿空白等於「不壓縮」，跟「壓縮模式」這個功能名稱矛盾
+function toggleCompressMode(entry) {
+  entry.compressMode = !entry.compressMode
+  if (entry.compressMode && !entry.tuning.quality) {
+    entry.tuning.quality = DEFAULT_COMPRESS_QUALITY
+  }
+}
+
 function applyTuningToAll(entry) {
   // 圖片跟影音的進階選項語意完全不同（CRF/位元率 vs 縮放/畫質），
   // 只套用到同一種類型的檔案，避免把不相干的設定塞進另一分頁的檔案
@@ -339,7 +352,7 @@ function stopPolling(localId) {
 function buildFormData(entry) {
   const formData = new FormData()
   formData.append('file', entry.file)
-  formData.append('format', entry.format)
+  if (!entry.compressMode) formData.append('format', entry.format)
   const t = entry.tuning
   if (t.resolution) formData.append('resolution', t.resolution)
   if (t.frameRate) formData.append('frameRate', t.frameRate)
@@ -608,7 +621,8 @@ function downloadAll() {
             <div class="format-pill-group">
               <span class="src-pill">{{ extOf(entry) }}</span>
               <span class="pill-arrow">→</span>
-              <div class="select-wrap select-wrap-pill">
+              <span v-if="isImageEntry(entry) && entry.compressMode" class="src-pill compress-pill">壓縮 {{ extOf(entry) }}</span>
+              <div v-else class="select-wrap select-wrap-pill">
                 <select
                   class="target-select"
                   v-model="entry.format"
@@ -687,6 +701,16 @@ function downloadAll() {
                 <input class="settings-input" type="number" min="1" max="100" placeholder="自動" v-model="entry.tuning.quality" />
               </label>
               <div class="settings-field settings-field-wide settings-toggles">
+                <label class="toggle">
+                  <input
+                    type="checkbox"
+                    :checked="entry.compressMode"
+                    @change="toggleCompressMode(entry)"
+                    class="visually-hidden"
+                  />
+                  <span class="toggle-track" :class="{ on: entry.compressMode }"><span class="toggle-knob"></span></span>
+                  壓縮模式（保留原格式，只縮小檔案）
+                </label>
                 <label class="toggle">
                   <input type="checkbox" v-model="entry.tuning.stripMetadata" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.stripMetadata }"><span class="toggle-knob"></span></span>
@@ -1364,6 +1388,11 @@ function downloadAll() {
   border: 1px solid var(--border-soft);
   border-radius: 7px;
   background: var(--bg);
+}
+
+.compress-pill {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .pill-arrow {

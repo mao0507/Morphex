@@ -14,6 +14,10 @@ import { rm, stat } from 'fs/promises';
 import { join } from 'path';
 import { ConversionError } from '../core/errors';
 import { prepareConversion, runPreparedConversion } from '../core/convert';
+import {
+  formatIdForSharpFormat,
+  tryReadImageMetadata,
+} from '../core/image-convert';
 import { ConvertTuning } from '../core/types';
 import { FORMATS, getFormatById } from '../core/formats';
 import { ensureStorageDirs, OUTPUTS_DIR } from './storage.paths';
@@ -63,13 +67,22 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
   // 真正耗時的 ffmpeg 編碼則在背景執行，透過 job 的 progress 供前端輪詢
   async convert(
     file: Express.Multer.File,
-    targetFormatId: string,
+    targetFormatId: string | undefined,
     tuning?: ConvertTuning,
   ): Promise<{ id: string; status: JobStatus; progress: number }> {
-    const targetFormat = getFormatById(targetFormatId);
+    // 壓縮模式：前端不帶 format，圖片檔案就用來源格式自動當目標格式（單純壓縮，不換格式）；
+    // 非圖片檔案沒有「來源格式」這個對應概念，仍然要求明確指定格式
+    const resolvedFormatId =
+      targetFormatId || (await this.resolveSourceImageFormatId(file.path));
+    if (!resolvedFormatId) {
+      await this.removeQuietly(file.path);
+      throw new BadRequestException('請指定輸出格式');
+    }
+
+    const targetFormat = getFormatById(resolvedFormatId);
     if (!targetFormat) {
       await this.removeQuietly(file.path);
-      throw new BadRequestException(`不支援的目標格式：${targetFormatId}`);
+      throw new BadRequestException(`不支援的目標格式：${resolvedFormatId}`);
     }
 
     const id = randomUUID();
@@ -80,7 +93,7 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
       prepared = await prepareConversion({
         inputPath: file.path,
         outputPath,
-        targetFormatId,
+        targetFormatId: resolvedFormatId,
         tuning,
       });
     } catch (err) {
@@ -184,6 +197,15 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
       default:
         return new InternalServerErrorException('轉檔過程發生錯誤，請稍後再試');
     }
+  }
+
+  // 壓縮模式用：讀不出圖片 metadata，或格式我們不支援輸出，就回傳 undefined
+  // 讓呼叫端當作「沒指定格式」處理，回一般的 400
+  private async resolveSourceImageFormatId(
+    inputPath: string,
+  ): Promise<string | undefined> {
+    const meta = await tryReadImageMetadata(inputPath);
+    return meta?.format ? formatIdForSharpFormat(meta.format) : undefined;
   }
 
   private async removeQuietly(path: string): Promise<void> {
