@@ -122,7 +122,9 @@ npm run build          # 打包安裝檔（.dmg / .msi），輸出於 src-tauri/
 
 Windows/macOS 安裝檔另由 GitHub Actions（`release-please` 合併版本 PR 後自動觸發）建置並掛在 GitHub Release 上。
 
-**目前未簽章**，直接下載執行會被系統擋下，第一次開啟需要手動放行：
+**自動更新**：桌面版每次啟動會自動檢查 GitHub Release 上有沒有新版本，發現就跳原生對話框問要不要下載，同意後下載、驗證簽章、安裝，完成後自動重啟套用。這個更新包簽章跟下方「未簽章」是兩件事——更新包簽章是 CI 建置時用 `TAURI_SIGNING_PRIVATE_KEY` 這組 GitHub Actions secret 簽的，跟作業系統的 Gatekeeper/SmartScreen 憑證無關；維護者要重建這組 key，見 `CLAUDE.md`「Auto-update」小節。
+
+**目前未簽章**（作業系統層級），直接下載執行會被系統擋下，第一次開啟需要手動放行：
 
 - **macOS**：對 app 「右鍵 → 打開」，或「系統設定 → 隱私權與安全性」裡找到「已封鎖」提示按「仍要打開」
 - **Windows**：SmartScreen 跳出「Windows 已保護您的電腦」時，點「其他資訊 → 仍要執行」

@@ -23,8 +23,17 @@
       "csp": "default-src 'self'; connect-src 'self' http://localhost:47823; img-src 'self' data:; media-src 'self' blob:; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'"
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ1QjJBREE0RjU1NkFGNjAKUldSZ3IxYjFwSzJ5MVdUaGtLdU1LUG1uUk9SblpGRTc2STFNT2ZNL2lIMDlpQU1Ja2NQTXByankK",
+      "endpoints": [
+        "https://github.com/mao0507/Morphex/releases/latest/download/latest.json"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
