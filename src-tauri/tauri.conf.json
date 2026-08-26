@@ -25,7 +25,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ1QjJBREE0RjU1NkFGNjAKUldSZ3IxYjFwSzJ5MVdUaGtLdU1LUG1uUk9SblpGRTc2STFNT2ZNL2lIMDlpQU1Ja2NQTXByankK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM3NzVCNDZEMEZFRkRDQjEKUldTeDNPOFBiYlIxTjI1TVU3V0srVVpWVXZoSW5jUWVoYnZPR0hnNDNQYXFQNG1HVFlWNnFBSzYK",
       "endpoints": [
         "https://github.com/mao0507/Morphex/releases/latest/download/latest.json"
       ]
