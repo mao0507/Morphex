@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/mao0507/Morphex/compare/morphex-v0.2.2...morphex-v0.3.0) (2026-08-26)
+
+
+### Features
+
+* 圖片新增壓縮模式，不換格式只縮小檔案 ([c5d1426](https://github.com/mao0507/Morphex/commit/c5d14263a55a03a493b83351005830ef737faa0f))
+* 桌面版新增自動檢查更新功能 ([b79e32d](https://github.com/mao0507/Morphex/commit/b79e32da4e611bcd8a69d04abbd1b647a7701823))
+
 ## [0.2.2](https://github.com/mao0507/Morphex/compare/morphex-v0.2.1...morphex-v0.2.2) (2026-08-26)
 
 
