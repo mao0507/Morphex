@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/mao0507/Morphex/compare/morphex-v0.3.1...morphex-v0.3.2) (2026-08-28)
+
+
+### Miscellaneous Chores
+
+* 強制觸發下一版 release ([b63a8a1](https://github.com/mao0507/Morphex/commit/b63a8a128e19c44e0fa9326d2163a40b2d305257))
+
 ## [0.3.1](https://github.com/mao0507/Morphex/compare/morphex-v0.3.0...morphex-v0.3.1) (2026-08-26)
 
 
