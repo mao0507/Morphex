@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Morphex 架構圖表</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; max-width: 640px; margin: 4rem auto; padding: 0 1.5rem; line-height: 1.6; }
+  h1 { font-size: 1.4rem; }
+  ul { list-style: none; padding: 0; }
+  li { margin: 0.75rem 0; }
+  a { display: block; padding: 0.9rem 1.1rem; border: 1px solid #8883; border-radius: 0.6rem; text-decoration: none; color: inherit; }
+  a:hover { background: #8881; }
+  .desc { display: block; font-size: 0.85rem; opacity: 0.7; margin-top: 0.2rem; }
+</style>
+</head>
+<body>
+<h1>Morphex 架構圖表</h1>
+<ul>
+  <li><a href="architecture.html">Tauri 桌面封裝架構<span class="desc">webview / sidecar / ffmpeg / 自動更新</span></a></li>
+  <li><a href="workflow.html">轉檔流程<span class="desc">上傳 → 驗證 → 背景轉檔 → 下載 → 逾時清理</span></a></li>
+  <li><a href="sequence.html">非同步輪詢時序<span class="desc">POST /convert → 輪詢 status → 下載</span></a></li>
+  <li><a href="lifecycle.html">Job 狀態生命週期<span class="desc">queued → processing → done/error → swept</span></a></li>
+</ul>
+</body>
+</html>
