@@ -1,4 +1,5 @@
 mod backend_sidecar;
+mod i18n;
 mod updater;
 
 use tauri::Manager;

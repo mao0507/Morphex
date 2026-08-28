@@ -1,6 +1,8 @@
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::UpdaterExt;
 
+use crate::i18n;
+
 // 背景檢查一次更新：找到就跳原生對話框問使用者要不要下載，同意才下載安裝，
 // 裝完直接重啟套用。跑在背景 task 裡（而非呼叫端的同步流程），這樣網路慢或
 // GitHub 打不到時，不會卡住主視窗、也不影響呼叫端其他啟動步驟
@@ -23,13 +25,12 @@ pub fn check_for_updates(app: tauri::AppHandle) {
       }
     };
 
+    let lang = i18n::detect();
     let version = update.version.clone();
     let should_update = app
       .dialog()
-      .message(format!(
-        "發現新版本 {version}，是否下載並安裝？\n安裝完成後會自動重新啟動。"
-      ))
-      .title("Morphex 有可用更新")
+      .message(i18n::update_available_message(lang, &version))
+      .title(i18n::update_available_title(lang))
       .buttons(MessageDialogButtons::YesNo)
       .blocking_show();
 
@@ -47,9 +48,9 @@ pub fn check_for_updates(app: tauri::AppHandle) {
         log::error!("更新下載/安裝失敗：{err}");
         app
           .dialog()
-          .message(format!("更新失敗，請稍後再試或手動下載：\n{err}"))
+          .message(i18n::update_failed_message(lang, &err))
           .kind(MessageDialogKind::Error)
-          .title("Morphex 更新失敗")
+          .title(i18n::update_failed_title(lang))
           .blocking_show();
       }
     }
