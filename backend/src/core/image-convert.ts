@@ -73,9 +73,8 @@ export async function runSharpJob(
       });
     }
 
-    // sharp 預設輸出就會去掉 EXIF/ICC 等 metadata，跟 ffmpeg 預設「保留」相反；
-    // 這裡刻意反過來接，讓「去除 metadata」勾選框在兩條 pipeline 語意一致：
-    // 沒勾 = 保留原始 metadata（呼叫 withMetadata() 蓋掉 sharp 的預設行為）
+    // 語意契約見 ConvertTuning.stripMetadata（types.ts）；sharp 預設就是移除，
+    // 這裡要主動呼叫 withMetadata() 蓋掉，沒勾才會變成「保留」
     if (!plan.tuning.stripMetadata) {
       pipeline = pipeline.withMetadata();
     }

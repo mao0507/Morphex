@@ -93,6 +93,8 @@ export function buildFfmpegArgs(
     if (duration > 0) args.push('-t', String(duration));
   }
 
+  // 語意契約見 ConvertTuning.stripMetadata（types.ts）；ffmpeg 預設就是保留，
+  // 這裡不用額外做什麼，只有勾了才主動移除
   if (tuning.stripMetadata) {
     args.push('-map_metadata', '-1');
   }

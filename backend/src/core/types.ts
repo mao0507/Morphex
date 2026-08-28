@@ -36,6 +36,9 @@ export interface ConvertTuning {
   trimStartSec?: number;
   trimEndSec?: number;
   normalizeAudio?: boolean;
+  // false（未提供）= 保留原始中繼資料，true = 移除。兩個轉檔引擎的原生預設值
+  // 剛好相反（ffmpeg 預設保留、sharp 預設移除），ffmpeg-args.ts 跟
+  // image-convert.ts 各自要主動接上這條語意才會一致，不能照搬各自的預設值
   stripMetadata?: boolean;
   videoCodec?: VideoCodecChoice;
   audioCodec?: AudioCodecChoice;
