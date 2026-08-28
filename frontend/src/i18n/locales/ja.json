@@ -5,6 +5,120 @@
       "zh-TW": "繁體中文",
       "en": "English",
       "ja": "日本語"
+    },
+    "theme": {
+      "dark": "ダーク",
+      "light": "ライト"
+    }
+  },
+  "header": {
+    "addFiles": "+ ファイルを追加"
+  },
+  "tabs": {
+    "video": "動画を変換",
+    "image": "画像を変換"
+  },
+  "hero": {
+    "title": {
+      "video": "ファイルを変換",
+      "image": "画像を変換"
+    },
+    "desc": {
+      "video": "動画または音声ファイルをドロップし、出力形式を選ぶとブラウザ内で変換できます。",
+      "image": "画像ファイルをドロップし、出力形式を選ぶだけで変換できます。"
+    }
+  },
+  "queue": {
+    "fileCount": "{count} 個のファイル",
+    "title": "キュー",
+    "download": "ダウンロード",
+    "retry": "再試行",
+    "convert": "変換",
+    "settingsTitle": "設定",
+    "removeTitle": "削除",
+    "applyToAll": "すべてのファイルに適用",
+    "saveSettings": "設定を保存",
+    "compressPrefix": "圧縮"
+  },
+  "dropzone": {
+    "prefix": "ここにファイルをドロップ、または",
+    "link": "クリックして選択",
+    "hint": "{exts} など全{count}形式、1ファイル最大{mb}MB"
+  },
+  "notice": {
+    "skippedNonImage": "画像以外のファイルはスキップされました。「動画を変換」タブに切り替えてアップロードしてください",
+    "skippedNonMedia": "動画・音声以外のファイルはスキップされました。「画像を変換」タブに切り替えてアップロードしてください"
+  },
+  "chips": {
+    "label": "既定の出力形式"
+  },
+  "optgroup": {
+    "image": "画像",
+    "video": "動画",
+    "audio": "音声"
+  },
+  "status": {
+    "idle": "未変換",
+    "queued": "待機中",
+    "processing": "変換中",
+    "done": "完了",
+    "error": "失敗"
+  },
+  "settings": {
+    "scale": "スケール",
+    "qualityRange": "画質 (1-100)",
+    "compressMode": "圧縮モード（形式はそのまま、サイズのみ縮小）",
+    "stripMetadata": "メタデータを削除",
+    "resolution": "解像度",
+    "frameRate": "フレームレート",
+    "audioBitrate": "音声ビットレート",
+    "videoBitrate": "映像ビットレート (kbps)",
+    "trimRange": "トリミング範囲（秒）",
+    "trimStartPlaceholder": "開始",
+    "trimEndPlaceholder": "終了",
+    "videoCodec": "映像コーデック",
+    "audioCodec": "音声コーデック",
+    "encodeSpeed": "エンコード速度",
+    "crf": "画質 CRF (0-51)",
+    "sampleRate": "サンプルレート",
+    "channels": "チャンネル",
+    "rotate": "回転",
+    "speed": "速度倍率 (0.25-4)",
+    "imageAdjust": "画面調整：明るさ / コントラスト / 彩度",
+    "brightnessPlaceholder": "明るさ",
+    "contrastPlaceholder": "コントラスト",
+    "saturationPlaceholder": "彩度",
+    "normalizeAudio": "音量正規化",
+    "flipHorizontal": "左右反転",
+    "flipVertical": "上下反転",
+    "deinterlace": "デインターレース",
+    "denoise": "ノイズ除去"
+  },
+  "presets": {
+    "auto": "自動",
+    "formatDefault": "形式のデフォルト",
+    "noReencode": "再エンコードなし (copy)",
+    "resolutionOriginal": "元の解像度",
+    "frameRateOriginal": "元の FPS",
+    "encodeSpeedDefault": "エンコード速度のデフォルト",
+    "sampleRateOriginal": "元のサンプルレート",
+    "channelsStereo": "ステレオ (2)",
+    "channelsMono": "モノラル (1)",
+    "channelsOriginal": "元のチャンネル",
+    "rotateNone": "回転なし"
+  },
+  "footer": {
+    "downloadAll": "すべてダウンロード",
+    "convertAll": "すべて変換"
+  },
+  "errors": {
+    "generic": "変換に失敗しました。しばらくしてから再度お試しください",
+    "code": {
+      "INVALID_INPUT": "無効な入力ファイルです",
+      "UNSUPPORTED_COMBINATION": "サポートされていない形式の組み合わせです",
+      "PROBE_FAILED": "ファイルの内容を解析できませんでした",
+      "FFMPEG_FAILED": "変換処理中にエラーが発生しました",
+      "TIMEOUT": "変換がタイムアウトしました"
     }
   }
 }

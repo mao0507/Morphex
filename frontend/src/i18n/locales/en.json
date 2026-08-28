@@ -5,6 +5,120 @@
       "zh-TW": "繁體中文",
       "en": "English",
       "ja": "日本語"
+    },
+    "theme": {
+      "dark": "Dark",
+      "light": "Light"
+    }
+  },
+  "header": {
+    "addFiles": "+ Add files"
+  },
+  "tabs": {
+    "video": "Convert Video",
+    "image": "Convert Image"
+  },
+  "hero": {
+    "title": {
+      "video": "Convert Files",
+      "image": "Convert Images"
+    },
+    "desc": {
+      "video": "Drop a video or audio file, pick a target format, and convert it right in your browser.",
+      "image": "Drop an image file and pick a target format to convert it."
+    }
+  },
+  "queue": {
+    "fileCount": "{count} file | {count} files",
+    "title": "Queue",
+    "download": "Download",
+    "retry": "Retry",
+    "convert": "Convert",
+    "settingsTitle": "Settings",
+    "removeTitle": "Remove",
+    "applyToAll": "Apply to all files",
+    "saveSettings": "Save settings",
+    "compressPrefix": "Compressed"
+  },
+  "dropzone": {
+    "prefix": "Drop files here, or",
+    "link": "browse",
+    "hint": "{exts} and {count} formats total, up to {mb}MB per file"
+  },
+  "notice": {
+    "skippedNonImage": "Skipped non-image files — switch to the \"Convert Video\" tab to upload them",
+    "skippedNonMedia": "Skipped non-media files — switch to the \"Convert Image\" tab to upload them"
+  },
+  "chips": {
+    "label": "Default output format"
+  },
+  "optgroup": {
+    "image": "Image",
+    "video": "Video",
+    "audio": "Audio"
+  },
+  "status": {
+    "idle": "Ready",
+    "queued": "Queued",
+    "processing": "Converting",
+    "done": "Done",
+    "error": "Failed"
+  },
+  "settings": {
+    "scale": "Scale",
+    "qualityRange": "Quality (1-100)",
+    "compressMode": "Compress mode (keep format, shrink size only)",
+    "stripMetadata": "Strip metadata",
+    "resolution": "Resolution",
+    "frameRate": "Frame rate",
+    "audioBitrate": "Audio bitrate",
+    "videoBitrate": "Video bitrate (kbps)",
+    "trimRange": "Trim range (seconds)",
+    "trimStartPlaceholder": "Start",
+    "trimEndPlaceholder": "End",
+    "videoCodec": "Video codec",
+    "audioCodec": "Audio codec",
+    "encodeSpeed": "Encode speed",
+    "crf": "Quality CRF (0-51)",
+    "sampleRate": "Sample rate",
+    "channels": "Channels",
+    "rotate": "Rotate",
+    "speed": "Speed (0.25-4x)",
+    "imageAdjust": "Adjust: brightness / contrast / saturation",
+    "brightnessPlaceholder": "Brightness",
+    "contrastPlaceholder": "Contrast",
+    "saturationPlaceholder": "Saturation",
+    "normalizeAudio": "Normalize audio",
+    "flipHorizontal": "Flip horizontal",
+    "flipVertical": "Flip vertical",
+    "deinterlace": "Deinterlace",
+    "denoise": "Denoise"
+  },
+  "presets": {
+    "auto": "Auto",
+    "formatDefault": "Format default",
+    "noReencode": "No re-encode (copy)",
+    "resolutionOriginal": "Original resolution",
+    "frameRateOriginal": "Original FPS",
+    "encodeSpeedDefault": "Encode speed default",
+    "sampleRateOriginal": "Original sample rate",
+    "channelsStereo": "Stereo (2)",
+    "channelsMono": "Mono (1)",
+    "channelsOriginal": "Original channels",
+    "rotateNone": "No rotation"
+  },
+  "footer": {
+    "downloadAll": "Download all",
+    "convertAll": "Convert all"
+  },
+  "errors": {
+    "generic": "Conversion failed, please try again later",
+    "code": {
+      "INVALID_INPUT": "Invalid input file",
+      "UNSUPPORTED_COMBINATION": "Unsupported format combination",
+      "PROBE_FAILED": "Could not read file content",
+      "FFMPEG_FAILED": "An error occurred during conversion",
+      "TIMEOUT": "Conversion timed out"
     }
   }
 }

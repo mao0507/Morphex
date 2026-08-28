@@ -9,88 +9,88 @@ const { t, locale } = useI18n()
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 const MAX_UPLOAD_MB = 500
 
-const RESOLUTION_PRESETS = [
-  { value: '', label: '原始解析度' },
+const RESOLUTION_PRESETS = computed(() => [
+  { value: '', label: t('presets.resolutionOriginal') },
   { value: '1920x1080', label: '1920×1080 (FHD)' },
   { value: '1280x720', label: '1280×720 (HD)' },
   { value: '854x480', label: '854×480 (SD)' },
   { value: '640x360', label: '640×360' },
-]
+])
 
-const FRAME_RATE_PRESETS = [
-  { value: '', label: '原始 FPS' },
+const FRAME_RATE_PRESETS = computed(() => [
+  { value: '', label: t('presets.frameRateOriginal') },
   { value: '60', label: '60 fps' },
   { value: '30', label: '30 fps' },
   { value: '24', label: '24 fps' },
   { value: '15', label: '15 fps' },
-]
+])
 
-const AUDIO_BITRATE_PRESETS = [
-  { value: '', label: '自動' },
+const AUDIO_BITRATE_PRESETS = computed(() => [
+  { value: '', label: t('presets.auto') },
   { value: '320', label: '320 kbps' },
   { value: '256', label: '256 kbps' },
   { value: '192', label: '192 kbps' },
   { value: '128', label: '128 kbps' },
-]
+])
 
-const VIDEO_CODEC_PRESETS = [
-  { value: '', label: '格式預設' },
+const VIDEO_CODEC_PRESETS = computed(() => [
+  { value: '', label: t('presets.formatDefault') },
   { value: 'h264', label: 'H.264' },
   { value: 'h265', label: 'H.265 / HEVC' },
   { value: 'vp9', label: 'VP9' },
   { value: 'av1', label: 'AV1' },
   { value: 'mpeg4', label: 'MPEG-4' },
-  { value: 'copy', label: '不重新編碼 (copy)' },
-]
+  { value: 'copy', label: t('presets.noReencode') },
+])
 
-const AUDIO_CODEC_PRESETS = [
-  { value: '', label: '格式預設' },
+const AUDIO_CODEC_PRESETS = computed(() => [
+  { value: '', label: t('presets.formatDefault') },
   { value: 'aac', label: 'AAC' },
   { value: 'mp3', label: 'MP3' },
   { value: 'opus', label: 'Opus' },
   { value: 'flac', label: 'FLAC' },
   { value: 'vorbis', label: 'Vorbis' },
-  { value: 'copy', label: '不重新編碼 (copy)' },
-]
+  { value: 'copy', label: t('presets.noReencode') },
+])
 
-const PRESET_PRESETS = [
-  { value: '', label: '編碼速度預設' },
+const PRESET_PRESETS = computed(() => [
+  { value: '', label: t('presets.encodeSpeedDefault') },
   { value: 'ultrafast', label: 'ultrafast' },
   { value: 'veryfast', label: 'veryfast' },
   { value: 'fast', label: 'fast' },
   { value: 'medium', label: 'medium' },
   { value: 'slow', label: 'slow' },
   { value: 'veryslow', label: 'veryslow' },
-]
+])
 
-const SAMPLE_RATE_PRESETS = [
-  { value: '', label: '原始取樣率' },
+const SAMPLE_RATE_PRESETS = computed(() => [
+  { value: '', label: t('presets.sampleRateOriginal') },
   { value: '48000', label: '48000 Hz' },
   { value: '44100', label: '44100 Hz' },
   { value: '22050', label: '22050 Hz' },
   { value: '16000', label: '16000 Hz' },
-]
+])
 
-const AUDIO_CHANNEL_PRESETS = [
-  { value: '', label: '原始聲道' },
-  { value: '2', label: '立體聲 (2)' },
-  { value: '1', label: '單聲道 (1)' },
-]
+const AUDIO_CHANNEL_PRESETS = computed(() => [
+  { value: '', label: t('presets.channelsOriginal') },
+  { value: '2', label: t('presets.channelsStereo') },
+  { value: '1', label: t('presets.channelsMono') },
+])
 
-const ROTATE_PRESETS = [
-  { value: '', label: '不旋轉' },
+const ROTATE_PRESETS = computed(() => [
+  { value: '', label: t('presets.rotateNone') },
   { value: '90', label: '90°' },
   { value: '180', label: '180°' },
   { value: '270', label: '270°' },
-]
+])
 
-const STATUS_LABEL = {
-  idle: '待轉換',
-  queued: '排隊中',
-  processing: '轉換中',
-  done: '完成',
-  error: '失敗',
-}
+const STATUS_LABEL = computed(() => ({
+  idle: t('status.idle'),
+  queued: t('status.queued'),
+  processing: t('status.processing'),
+  done: t('status.done'),
+  error: t('status.error'),
+}))
 
 const formats = ref([])
 const queue = ref([])
@@ -118,19 +118,15 @@ const processingCount = computed(() => visibleQueue.value.filter((e) => e.status
 const idleCount = computed(() => visibleQueue.value.filter((e) => e.status === 'idle').length)
 const errorCount = computed(() => visibleQueue.value.filter((e) => e.status === 'error').length)
 const pendingCount = computed(() => idleCount.value + errorCount.value)
-const fileCountLabel = computed(() => `${visibleQueue.value.length} 個檔案`)
+const fileCountLabel = computed(() => t('queue.fileCount', { count: visibleQueue.value.length }, visibleQueue.value.length))
 const totalSizeLabel = computed(() => formatBytes(visibleQueue.value.reduce((sum, e) => sum + (e.file?.size || 0), 0)))
-const heroTitle = computed(() => (activeTab.value === 'image' ? '轉換圖片' : '轉換檔案'))
-const heroDesc = computed(() =>
-  activeTab.value === 'image'
-    ? '拖放圖片檔案，選擇目標格式，即可完成轉換。'
-    : '拖放影片或音訊檔案，選擇目標格式，即可在瀏覽器中完成轉換。',
-)
+const heroTitle = computed(() => (activeTab.value === 'image' ? t('hero.title.image') : t('hero.title.video')))
+const heroDesc = computed(() => (activeTab.value === 'image' ? t('hero.desc.image') : t('hero.desc.video')))
 const supportHint = computed(() => {
   const list = activeTab.value === 'image' ? imageFormats.value : [...videoFormats.value, ...audioFormats.value]
   if (!list.length) return ''
   const exts = [...new Set(list.map((f) => f.ext.toUpperCase()))]
-  return `${exts.slice(0, 8).join(' · ')} 等共 ${exts.length} 種格式，單檔最高 ${MAX_UPLOAD_MB}MB`
+  return t('dropzone.hint', { exts: exts.slice(0, 8).join(' · '), count: exts.length, mb: MAX_UPLOAD_MB })
 })
 
 function systemTheme() {
@@ -278,9 +274,7 @@ function addFiles(fileList) {
   queue.value.push(...accepted.map((file) => makeEntry(file, initialFormat)))
 
   if (accepted.length < all.length) {
-    rejectionNotice.value = isImageTab
-      ? '已略過非圖片檔案，請切換到「轉換影片」分頁上傳'
-      : '已略過非影音檔案，請切換到「轉換圖片」分頁上傳'
+    rejectionNotice.value = isImageTab ? t('notice.skippedNonImage') : t('notice.skippedNonMedia')
     clearTimeout(rejectionTimer)
     rejectionTimer = setTimeout(() => {
       rejectionNotice.value = ''
@@ -352,6 +346,13 @@ function stopPolling(entry) {
   }
 }
 
+const KNOWN_ERROR_CODES = ['INVALID_INPUT', 'UNSUPPORTED_COMBINATION', 'PROBE_FAILED', 'FFMPEG_FAILED', 'TIMEOUT']
+
+// 只翻通用錯誤分類，不翻後端回傳的技術細節——那些是給除錯用的固定字串
+function errorLabel(code) {
+  return KNOWN_ERROR_CODES.includes(code) ? t(`errors.code.${code}`) : t('errors.generic')
+}
+
 function markEntryError(entry, message) {
   entry.status = 'error'
   entry.errorMessage = message
@@ -408,14 +409,14 @@ async function startConversion(entry) {
       body: buildFormData(entry),
     })
     const data = await res.json()
-    if (!res.ok) throw new Error(data.message || '轉檔失敗')
+    if (!res.ok) throw new Error()
 
     entry.jobId = data.id
     entry.status = 'processing'
     entry.progress = data.progress ?? 0
     pollStatus(entry)
-  } catch (err) {
-    markEntryError(entry, err.message || '轉檔過程發生錯誤')
+  } catch {
+    markEntryError(entry, t('errors.generic'))
   }
 }
 
@@ -424,7 +425,7 @@ function pollStatus(entry) {
     try {
       const res = await fetch(`${API_BASE}/convert/${entry.jobId}/status`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message || '無法取得轉檔進度')
+      if (!res.ok) throw new Error()
 
       entry.progress = data.progress ?? entry.progress
 
@@ -435,11 +436,11 @@ function pollStatus(entry) {
         if (card) gsap.fromTo(card, { scale: 1 }, { scale: 1.015, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' })
       } else if (data.status === 'error') {
         stopPolling(entry)
-        markEntryError(entry, data.error?.message || '轉檔失敗')
+        markEntryError(entry, errorLabel(data.error?.code))
       }
-    } catch (err) {
+    } catch {
       stopPolling(entry)
-      markEntryError(entry, err.message || '無法取得轉檔進度')
+      markEntryError(entry, t('errors.generic'))
     }
   }, 800)
 }
@@ -474,7 +475,7 @@ function downloadAll() {
           <span class="beta-tag">BETA</span>
         </div>
         <div class="header-actions">
-          <button class="btn-outline" type="button" @click="openFilePicker">+ 新增檔案</button>
+          <button class="btn-outline" type="button" @click="openFilePicker">{{ t('header.addFiles') }}</button>
           <div class="lang-select-wrap">
             <select
               class="lang-select"
@@ -488,7 +489,7 @@ function downloadAll() {
           <button class="theme-toggle" type="button" @click="toggleTheme">
             <span v-if="theme === 'dark'" class="theme-dot theme-dot-dark"></span>
             <span v-else class="theme-dot theme-dot-light"></span>
-            {{ theme === 'dark' ? 'Dark' : 'Light' }}
+            {{ theme === 'dark' ? t('app.theme.dark') : t('app.theme.light') }}
           </button>
         </div>
       </div>
@@ -504,7 +505,7 @@ function downloadAll() {
           :aria-selected="activeTab === 'video'"
           @click="activeTab = 'video'"
         >
-          轉換影片
+          {{ t('tabs.video') }}
         </button>
         <button
           class="tab"
@@ -514,7 +515,7 @@ function downloadAll() {
           :aria-selected="activeTab === 'image'"
           @click="activeTab = 'image'"
         >
-          轉換圖片
+          {{ t('tabs.image') }}
         </button>
       </div>
 
@@ -537,7 +538,7 @@ function downloadAll() {
       >
         <span class="dropzone-icon">↑</span>
         <span class="dropzone-text">
-          <span class="dropzone-title">拖放檔案到這裡，或<span class="link-text">點擊瀏覽</span></span>
+          <span class="dropzone-title">{{ t('dropzone.prefix') }}<span class="link-text">{{ t('dropzone.link') }}</span></span>
           <span class="dropzone-hint">{{ supportHint }}</span>
         </span>
         <input
@@ -554,7 +555,7 @@ function downloadAll() {
       <p class="rejection-notice" v-if="rejectionNotice">{{ rejectionNotice }}</p>
 
       <div class="chips-bar" v-if="formats.length">
-        <span class="chips-label">預設輸出格式</span>
+        <span class="chips-label">{{ t('chips.label') }}</span>
         <template v-if="activeTab === 'image'">
           <div class="chips-group">
             <button
@@ -599,7 +600,7 @@ function downloadAll() {
       </div>
 
       <div class="queue-header" v-if="visibleQueue.length">
-        <span>佇列</span>
+        <span>{{ t('queue.title') }}</span>
         <span class="queue-header-count">{{ fileCountLabel }}</span>
       </div>
 
@@ -639,7 +640,7 @@ function downloadAll() {
             <div class="format-pill-group">
               <span class="src-pill">{{ extOf(entry) }}</span>
               <span class="pill-arrow">→</span>
-              <span v-if="isImageEntry(entry) && entry.compressMode" class="src-pill compress-pill">壓縮 {{ extOf(entry) }}</span>
+              <span v-if="isImageEntry(entry) && entry.compressMode" class="src-pill compress-pill">{{ t('queue.compressPrefix') }} {{ extOf(entry) }}</span>
               <div v-else class="select-wrap select-wrap-pill">
                 <select
                   class="target-select"
@@ -647,15 +648,15 @@ function downloadAll() {
                   :disabled="entry.status === 'processing' || entry.status === 'queued'"
                 >
                   <template v-if="isImageEntry(entry)">
-                    <optgroup label="圖片" v-if="imageFormats.length">
+                    <optgroup :label="t('optgroup.image')" v-if="imageFormats.length">
                       <option v-for="f in imageFormats" :key="f.id" :value="f.id">{{ f.label }}</option>
                     </optgroup>
                   </template>
                   <template v-else>
-                    <optgroup label="影片" v-if="videoFormats.length">
+                    <optgroup :label="t('optgroup.video')" v-if="videoFormats.length">
                       <option v-for="f in videoFormats" :key="f.id" :value="f.id">{{ f.label }}</option>
                     </optgroup>
-                    <optgroup label="音訊" v-if="audioFormats.length">
+                    <optgroup :label="t('optgroup.audio')" v-if="audioFormats.length">
                       <option v-for="f in audioFormats" :key="f.id" :value="f.id">{{ f.label }}</option>
                     </optgroup>
                   </template>
@@ -668,13 +669,13 @@ function downloadAll() {
 
             <div class="status-zone">
               <template v-if="entry.status === 'done'">
-                <span class="status-chip status-chip-done">✓ 完成</span>
-                <a class="btn-solid" :href="entry.downloadUrl">↓ 下載</a>
+                <span class="status-chip status-chip-done">✓ {{ t('status.done') }}</span>
+                <a class="btn-solid" :href="entry.downloadUrl">↓ {{ t('queue.download') }}</a>
               </template>
               <template v-else-if="entry.status === 'processing'">
                 <div class="progress-col">
                   <div class="progress-meta">
-                    <span class="progress-label"><span class="spinner"></span>轉換中</span>
+                    <span class="progress-label"><span class="spinner"></span>{{ t('status.processing') }}</span>
                     <span class="progress-pct">{{ Math.round(entry.progress) }}%</span>
                   </div>
                   <div class="progress-track">
@@ -683,30 +684,30 @@ function downloadAll() {
                 </div>
               </template>
               <template v-else-if="entry.status === 'queued'">
-                <span class="status-chip status-chip-queued"><span class="status-dot"></span>排隊中</span>
+                <span class="status-chip status-chip-queued"><span class="status-dot"></span>{{ t('status.queued') }}</span>
               </template>
               <template v-else-if="entry.status === 'error'">
                 <span class="status-chip status-chip-error">{{ entry.errorMessage || STATUS_LABEL.error }}</span>
-                <button class="btn-solid" type="button" @click="startConversion(entry)">重試</button>
+                <button class="btn-solid" type="button" @click="startConversion(entry)">{{ t('queue.retry') }}</button>
               </template>
               <template v-else>
-                <span class="status-chip status-chip-idle"><span class="status-dot"></span>待轉換</span>
-                <button class="btn-solid" type="button" @click="startConversion(entry)">轉換</button>
+                <span class="status-chip status-chip-idle"><span class="status-dot"></span>{{ t('status.idle') }}</span>
+                <button class="btn-solid" type="button" @click="startConversion(entry)">{{ t('queue.convert') }}</button>
               </template>
             </div>
 
             <div class="row-actions">
-              <button class="icon-btn" type="button" title="設定" @click="toggleSettings(entry)">
+              <button class="icon-btn" type="button" :title="t('queue.settingsTitle')" @click="toggleSettings(entry)">
                 {{ entry.settingsOpen ? '⌃' : '⌄' }}
               </button>
-              <button class="icon-btn icon-btn-remove" type="button" title="移除" @click="removeEntry(entry)">✕</button>
+              <button class="icon-btn icon-btn-remove" type="button" :title="t('queue.removeTitle')" @click="removeEntry(entry)">✕</button>
             </div>
           </div>
 
           <div class="settings-panel" v-if="entry.settingsOpen && isImageEntry(entry)">
             <div class="settings-grid">
               <label class="settings-field">
-                <span class="settings-label">縮放</span>
+                <span class="settings-label">{{ t('settings.scale') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.resolution">
                     <option v-for="opt in RESOLUTION_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -715,8 +716,8 @@ function downloadAll() {
                 </div>
               </label>
               <label class="settings-field">
-                <span class="settings-label">畫質 (1-100)</span>
-                <input class="settings-input" type="number" min="1" max="100" placeholder="自動" v-model="entry.tuning.quality" />
+                <span class="settings-label">{{ t('settings.qualityRange') }}</span>
+                <input class="settings-input" type="number" min="1" max="100" :placeholder="t('presets.auto')" v-model="entry.tuning.quality" />
               </label>
               <div class="settings-field settings-field-wide settings-toggles">
                 <label class="toggle">
@@ -727,26 +728,26 @@ function downloadAll() {
                     class="visually-hidden"
                   />
                   <span class="toggle-track" :class="{ on: entry.compressMode }"><span class="toggle-knob"></span></span>
-                  壓縮模式（保留原格式，只縮小檔案）
+                  {{ t('settings.compressMode') }}
                 </label>
                 <label class="toggle">
                   <input type="checkbox" v-model="entry.tuning.stripMetadata" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.stripMetadata }"><span class="toggle-knob"></span></span>
-                  移除中繼資料
+                  {{ t('settings.stripMetadata') }}
                 </label>
               </div>
             </div>
 
             <div class="settings-footer">
-              <button class="btn-text" type="button" @click="applyTuningToAll(entry)">套用到所有檔案</button>
-              <button class="btn-accent-soft" type="button" @click="toggleSettings(entry)">儲存設定</button>
+              <button class="btn-text" type="button" @click="applyTuningToAll(entry)">{{ t('queue.applyToAll') }}</button>
+              <button class="btn-accent-soft" type="button" @click="toggleSettings(entry)">{{ t('queue.saveSettings') }}</button>
             </div>
           </div>
 
           <div class="settings-panel" v-else-if="entry.settingsOpen">
             <div class="settings-grid">
               <label class="settings-field">
-                <span class="settings-label">解析度</span>
+                <span class="settings-label">{{ t('settings.resolution') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.resolution">
                     <option v-for="opt in RESOLUTION_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -755,7 +756,7 @@ function downloadAll() {
                 </div>
               </label>
               <label class="settings-field">
-                <span class="settings-label">幀率</span>
+                <span class="settings-label">{{ t('settings.frameRate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.frameRate">
                     <option v-for="opt in FRAME_RATE_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -764,7 +765,7 @@ function downloadAll() {
                 </div>
               </label>
               <label class="settings-field">
-                <span class="settings-label">音訊位元率</span>
+                <span class="settings-label">{{ t('settings.audioBitrate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.audioBitrate">
                     <option v-for="opt in AUDIO_BITRATE_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -774,21 +775,21 @@ function downloadAll() {
               </label>
 
               <label class="settings-field settings-field-wide">
-                <span class="settings-label">視訊位元率 (kbps)</span>
-                <input class="settings-input" type="number" min="0" placeholder="自動" v-model="entry.tuning.videoBitrate" />
+                <span class="settings-label">{{ t('settings.videoBitrate') }}</span>
+                <input class="settings-input" type="number" min="0" :placeholder="t('presets.auto')" v-model="entry.tuning.videoBitrate" />
               </label>
 
               <div class="settings-field settings-field-wide">
-                <span class="settings-label">剪輯範圍（秒）</span>
+                <span class="settings-label">{{ t('settings.trimRange') }}</span>
                 <div class="trim-row">
-                  <input class="settings-input trim-input" type="number" min="0" placeholder="開始" v-model="entry.tuning.trimStart" />
+                  <input class="settings-input trim-input" type="number" min="0" :placeholder="t('settings.trimStartPlaceholder')" v-model="entry.tuning.trimStart" />
                   <span class="trim-sep">—</span>
-                  <input class="settings-input trim-input" type="number" min="0" placeholder="結尾" v-model="entry.tuning.trimEnd" />
+                  <input class="settings-input trim-input" type="number" min="0" :placeholder="t('settings.trimEndPlaceholder')" v-model="entry.tuning.trimEnd" />
                 </div>
               </div>
 
               <label class="settings-field">
-                <span class="settings-label">視訊編碼器</span>
+                <span class="settings-label">{{ t('settings.videoCodec') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.videoCodec">
                     <option v-for="opt in VIDEO_CODEC_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -797,7 +798,7 @@ function downloadAll() {
                 </div>
               </label>
               <label class="settings-field">
-                <span class="settings-label">音訊編碼器</span>
+                <span class="settings-label">{{ t('settings.audioCodec') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.audioCodec">
                     <option v-for="opt in AUDIO_CODEC_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -806,7 +807,7 @@ function downloadAll() {
                 </div>
               </label>
               <label class="settings-field">
-                <span class="settings-label">編碼速度</span>
+                <span class="settings-label">{{ t('settings.encodeSpeed') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.preset">
                     <option v-for="opt in PRESET_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -816,11 +817,11 @@ function downloadAll() {
               </label>
 
               <label class="settings-field">
-                <span class="settings-label">畫質 CRF (0-51)</span>
-                <input class="settings-input" type="number" min="0" max="51" placeholder="自動" v-model="entry.tuning.crf" />
+                <span class="settings-label">{{ t('settings.crf') }}</span>
+                <input class="settings-input" type="number" min="0" max="51" :placeholder="t('presets.auto')" v-model="entry.tuning.crf" />
               </label>
               <label class="settings-field">
-                <span class="settings-label">取樣率</span>
+                <span class="settings-label">{{ t('settings.sampleRate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.sampleRate">
                     <option v-for="opt in SAMPLE_RATE_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -829,7 +830,7 @@ function downloadAll() {
                 </div>
               </label>
               <label class="settings-field">
-                <span class="settings-label">聲道</span>
+                <span class="settings-label">{{ t('settings.channels') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.audioChannels">
                     <option v-for="opt in AUDIO_CHANNEL_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -839,7 +840,7 @@ function downloadAll() {
               </label>
 
               <label class="settings-field">
-                <span class="settings-label">旋轉</span>
+                <span class="settings-label">{{ t('settings.rotate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.rotate">
                     <option v-for="opt in ROTATE_PRESETS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -848,16 +849,16 @@ function downloadAll() {
                 </div>
               </label>
               <label class="settings-field">
-                <span class="settings-label">速度倍率 (0.25-4)</span>
+                <span class="settings-label">{{ t('settings.speed') }}</span>
                 <input class="settings-input" type="number" min="0.25" max="4" step="0.1" placeholder="1.0" v-model="entry.tuning.speed" />
               </label>
 
               <div class="settings-field settings-field-wide">
-                <span class="settings-label">畫面調整：亮度 / 對比 / 飽和度</span>
+                <span class="settings-label">{{ t('settings.imageAdjust') }}</span>
                 <div class="trim-row">
-                  <input class="settings-input trim-input" type="number" min="-1" max="1" step="0.1" placeholder="亮度" v-model="entry.tuning.brightness" />
-                  <input class="settings-input trim-input" type="number" min="0" max="2" step="0.1" placeholder="對比" v-model="entry.tuning.contrast" />
-                  <input class="settings-input trim-input" type="number" min="0" max="3" step="0.1" placeholder="飽和度" v-model="entry.tuning.saturation" />
+                  <input class="settings-input trim-input" type="number" min="-1" max="1" step="0.1" :placeholder="t('settings.brightnessPlaceholder')" v-model="entry.tuning.brightness" />
+                  <input class="settings-input trim-input" type="number" min="0" max="2" step="0.1" :placeholder="t('settings.contrastPlaceholder')" v-model="entry.tuning.contrast" />
+                  <input class="settings-input trim-input" type="number" min="0" max="3" step="0.1" :placeholder="t('settings.saturationPlaceholder')" v-model="entry.tuning.saturation" />
                 </div>
               </div>
 
@@ -865,39 +866,39 @@ function downloadAll() {
                 <label class="toggle">
                   <input type="checkbox" v-model="entry.tuning.normalizeAudio" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.normalizeAudio }"><span class="toggle-knob"></span></span>
-                  音量標準化
+                  {{ t('settings.normalizeAudio') }}
                 </label>
                 <label class="toggle">
                   <input type="checkbox" v-model="entry.tuning.stripMetadata" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.stripMetadata }"><span class="toggle-knob"></span></span>
-                  移除中繼資料
+                  {{ t('settings.stripMetadata') }}
                 </label>
                 <label class="toggle">
                   <input type="checkbox" v-model="entry.tuning.flipHorizontal" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.flipHorizontal }"><span class="toggle-knob"></span></span>
-                  水平翻轉
+                  {{ t('settings.flipHorizontal') }}
                 </label>
                 <label class="toggle">
                   <input type="checkbox" v-model="entry.tuning.flipVertical" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.flipVertical }"><span class="toggle-knob"></span></span>
-                  垂直翻轉
+                  {{ t('settings.flipVertical') }}
                 </label>
                 <label class="toggle">
                   <input type="checkbox" v-model="entry.tuning.deinterlace" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.deinterlace }"><span class="toggle-knob"></span></span>
-                  去交錯
+                  {{ t('settings.deinterlace') }}
                 </label>
                 <label class="toggle">
                   <input type="checkbox" v-model="entry.tuning.denoise" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.denoise }"><span class="toggle-knob"></span></span>
-                  降噪
+                  {{ t('settings.denoise') }}
                 </label>
               </div>
             </div>
 
             <div class="settings-footer">
-              <button class="btn-text" type="button" @click="applyTuningToAll(entry)">套用到所有檔案</button>
-              <button class="btn-accent-soft" type="button" @click="toggleSettings(entry)">儲存設定</button>
+              <button class="btn-text" type="button" @click="applyTuningToAll(entry)">{{ t('queue.applyToAll') }}</button>
+              <button class="btn-accent-soft" type="button" @click="toggleSettings(entry)">{{ t('queue.saveSettings') }}</button>
             </div>
           </div>
         </li>
@@ -907,15 +908,15 @@ function downloadAll() {
     <footer class="site-footer" v-if="visibleQueue.length">
       <div class="footer-inner">
         <div class="footer-stats">
-          <span class="stat"><span class="status-dot status-dot-done"></span>{{ doneCount }} 完成</span>
-          <span class="stat"><span class="status-dot status-dot-accent"></span>{{ processingCount }} 轉換中</span>
-          <span class="stat"><span class="status-dot"></span>{{ idleCount }} 待轉換</span>
-          <span class="stat stat-error" v-if="errorCount"><span class="status-dot status-dot-error"></span>{{ errorCount }} 失敗</span>
+          <span class="stat"><span class="status-dot status-dot-done"></span>{{ doneCount }} {{ t('status.done') }}</span>
+          <span class="stat"><span class="status-dot status-dot-accent"></span>{{ processingCount }} {{ t('status.processing') }}</span>
+          <span class="stat"><span class="status-dot"></span>{{ idleCount }} {{ t('status.idle') }}</span>
+          <span class="stat stat-error" v-if="errorCount"><span class="status-dot status-dot-error"></span>{{ errorCount }} {{ t('status.error') }}</span>
         </div>
         <div class="footer-actions">
-          <button class="btn-outline" type="button" :disabled="!hasDone" @click="downloadAll">全部下載</button>
+          <button class="btn-outline" type="button" :disabled="!hasDone" @click="downloadAll">{{ t('footer.downloadAll') }}</button>
           <button class="btn-solid" type="button" :disabled="!hasIdleOrError" @click="convertAll">
-            全部轉換<span class="count-badge">{{ pendingCount }}</span>
+            {{ t('footer.convertAll') }}<span class="count-badge">{{ pendingCount }}</span>
           </button>
         </div>
       </div>

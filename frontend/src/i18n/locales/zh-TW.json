@@ -5,6 +5,120 @@
       "zh-TW": "繁體中文",
       "en": "English",
       "ja": "日本語"
+    },
+    "theme": {
+      "dark": "深色",
+      "light": "淺色"
+    }
+  },
+  "header": {
+    "addFiles": "+ 新增檔案"
+  },
+  "tabs": {
+    "video": "轉換影片",
+    "image": "轉換圖片"
+  },
+  "hero": {
+    "title": {
+      "video": "轉換檔案",
+      "image": "轉換圖片"
+    },
+    "desc": {
+      "video": "拖放影片或音訊檔案，選擇目標格式，即可在瀏覽器中完成轉換。",
+      "image": "拖放圖片檔案，選擇目標格式，即可完成轉換。"
+    }
+  },
+  "queue": {
+    "fileCount": "{count} 個檔案",
+    "title": "佇列",
+    "download": "下載",
+    "retry": "重試",
+    "convert": "轉換",
+    "settingsTitle": "設定",
+    "removeTitle": "移除",
+    "applyToAll": "套用到所有檔案",
+    "saveSettings": "儲存設定",
+    "compressPrefix": "壓縮"
+  },
+  "dropzone": {
+    "prefix": "拖放檔案到這裡，或",
+    "link": "點擊瀏覽",
+    "hint": "{exts} 等共 {count} 種格式，單檔最高 {mb}MB"
+  },
+  "notice": {
+    "skippedNonImage": "已略過非圖片檔案，請切換到「轉換影片」分頁上傳",
+    "skippedNonMedia": "已略過非影音檔案，請切換到「轉換圖片」分頁上傳"
+  },
+  "chips": {
+    "label": "預設輸出格式"
+  },
+  "optgroup": {
+    "image": "圖片",
+    "video": "影片",
+    "audio": "音訊"
+  },
+  "status": {
+    "idle": "待轉換",
+    "queued": "排隊中",
+    "processing": "轉換中",
+    "done": "完成",
+    "error": "失敗"
+  },
+  "settings": {
+    "scale": "縮放",
+    "qualityRange": "畫質 (1-100)",
+    "compressMode": "壓縮模式（保留原格式，只縮小檔案）",
+    "stripMetadata": "移除中繼資料",
+    "resolution": "解析度",
+    "frameRate": "幀率",
+    "audioBitrate": "音訊位元率",
+    "videoBitrate": "視訊位元率 (kbps)",
+    "trimRange": "剪輯範圍（秒）",
+    "trimStartPlaceholder": "開始",
+    "trimEndPlaceholder": "結尾",
+    "videoCodec": "視訊編碼器",
+    "audioCodec": "音訊編碼器",
+    "encodeSpeed": "編碼速度",
+    "crf": "畫質 CRF (0-51)",
+    "sampleRate": "取樣率",
+    "channels": "聲道",
+    "rotate": "旋轉",
+    "speed": "速度倍率 (0.25-4)",
+    "imageAdjust": "畫面調整：亮度 / 對比 / 飽和度",
+    "brightnessPlaceholder": "亮度",
+    "contrastPlaceholder": "對比",
+    "saturationPlaceholder": "飽和度",
+    "normalizeAudio": "音量標準化",
+    "flipHorizontal": "水平翻轉",
+    "flipVertical": "垂直翻轉",
+    "deinterlace": "去交錯",
+    "denoise": "降噪"
+  },
+  "presets": {
+    "auto": "自動",
+    "formatDefault": "格式預設",
+    "noReencode": "不重新編碼 (copy)",
+    "resolutionOriginal": "原始解析度",
+    "frameRateOriginal": "原始 FPS",
+    "encodeSpeedDefault": "編碼速度預設",
+    "sampleRateOriginal": "原始取樣率",
+    "channelsStereo": "立體聲 (2)",
+    "channelsMono": "單聲道 (1)",
+    "channelsOriginal": "原始聲道",
+    "rotateNone": "不旋轉"
+  },
+  "footer": {
+    "downloadAll": "全部下載",
+    "convertAll": "全部轉換"
+  },
+  "errors": {
+    "generic": "轉檔失敗，請稍後再試",
+    "code": {
+      "INVALID_INPUT": "輸入檔案無效",
+      "UNSUPPORTED_COMBINATION": "不支援的格式組合",
+      "PROBE_FAILED": "無法解析檔案內容",
+      "FFMPEG_FAILED": "轉檔過程發生錯誤",
+      "TIMEOUT": "轉檔逾時"
     }
   }
 }
