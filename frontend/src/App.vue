@@ -102,7 +102,6 @@ const shellRef = ref(null)
 let localIdCounter = 0
 let gsapCtx
 let rejectionTimer = null
-const pollTimers = new Map()
 
 const videoFormats = computed(() => formats.value.filter((f) => f.kind === 'video'))
 const audioFormats = computed(() => formats.value.filter((f) => f.kind === 'audio'))
@@ -203,7 +202,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  for (const timer of pollTimers.values()) clearInterval(timer)
+  for (const entry of queue.value) stopPolling(entry)
   gsapCtx?.revert()
 })
 
@@ -257,6 +256,7 @@ function makeEntry(file, formatId) {
     jobId: null,
     downloadUrl: null,
     errorMessage: '',
+    pollTimerId: null,
   }
 }
 
@@ -336,17 +336,27 @@ function applyTuningToAll(entry) {
 }
 
 function removeEntry(entry) {
-  stopPolling(entry.localId)
+  stopPolling(entry)
   URL.revokeObjectURL(entry.previewUrl)
   queue.value = queue.value.filter((e) => e.localId !== entry.localId)
 }
 
-function stopPolling(localId) {
-  const timer = pollTimers.get(localId)
-  if (timer) {
-    clearInterval(timer)
-    pollTimers.delete(localId)
+function stopPolling(entry) {
+  if (entry.pollTimerId) {
+    clearInterval(entry.pollTimerId)
+    entry.pollTimerId = null
   }
+}
+
+function markEntryError(entry, message) {
+  entry.status = 'error'
+  entry.errorMessage = message
+}
+
+function markEntryDone(entry, downloadUrl) {
+  entry.status = 'done'
+  entry.progress = 100
+  entry.downloadUrl = downloadUrl
 }
 
 function buildFormData(entry) {
@@ -382,7 +392,7 @@ function buildFormData(entry) {
 }
 
 async function startConversion(entry) {
-  stopPolling(entry.localId)
+  stopPolling(entry)
   entry.status = 'queued'
   entry.progress = 0
   entry.errorMessage = ''
@@ -401,13 +411,12 @@ async function startConversion(entry) {
     entry.progress = data.progress ?? 0
     pollStatus(entry)
   } catch (err) {
-    entry.status = 'error'
-    entry.errorMessage = err.message || '轉檔過程發生錯誤'
+    markEntryError(entry, err.message || '轉檔過程發生錯誤')
   }
 }
 
 function pollStatus(entry) {
-  const timer = setInterval(async () => {
+  entry.pollTimerId = setInterval(async () => {
     try {
       const res = await fetch(`${API_BASE}/convert/${entry.jobId}/status`)
       const data = await res.json()
@@ -416,24 +425,19 @@ function pollStatus(entry) {
       entry.progress = data.progress ?? entry.progress
 
       if (data.status === 'done') {
-        stopPolling(entry.localId)
-        entry.status = 'done'
-        entry.progress = 100
-        entry.downloadUrl = `${API_BASE}${data.downloadUrl}`
+        stopPolling(entry)
+        markEntryDone(entry, `${API_BASE}${data.downloadUrl}`)
         const card = document.querySelector(`[data-local-id="${entry.localId}"]`)
         if (card) gsap.fromTo(card, { scale: 1 }, { scale: 1.015, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' })
       } else if (data.status === 'error') {
-        stopPolling(entry.localId)
-        entry.status = 'error'
-        entry.errorMessage = data.error?.message || '轉檔失敗'
+        stopPolling(entry)
+        markEntryError(entry, data.error?.message || '轉檔失敗')
       }
     } catch (err) {
-      stopPolling(entry.localId)
-      entry.status = 'error'
-      entry.errorMessage = err.message || '無法取得轉檔進度'
+      stopPolling(entry)
+      markEntryError(entry, err.message || '無法取得轉檔進度')
     }
   }, 800)
-  pollTimers.set(entry.localId, timer)
 }
 
 function convertAll() {
