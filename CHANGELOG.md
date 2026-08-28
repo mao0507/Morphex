@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/mao0507/Morphex/compare/morphex-v0.3.2...morphex-v0.4.0) (2026-08-28)
+
+
+### Features
+
+* **desktop:** 桌面版原生對話框依 OS 語言顯示 ([cbc0973](https://github.com/mao0507/Morphex/commit/cbc097337e75d913d6a30728a851d82fbf655e3d))
+* **frontend:** 前端 UI 字串全面 i18n 化 ([601992c](https://github.com/mao0507/Morphex/commit/601992c100ede9c0c5592833bc29d5c1af604730))
+
 ## [0.3.2](https://github.com/mao0507/Morphex/compare/morphex-v0.3.1...morphex-v0.3.2) (2026-08-28)
 
 
