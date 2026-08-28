@@ -1,6 +1,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { gsap } from 'gsap'
+import { SUPPORTED_LOCALES, setLocale } from './i18n'
+
+const { t, locale } = useI18n()
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 const MAX_UPLOAD_MB = 500
@@ -471,6 +475,16 @@ function downloadAll() {
         </div>
         <div class="header-actions">
           <button class="btn-outline" type="button" @click="openFilePicker">+ 新增檔案</button>
+          <div class="lang-select-wrap">
+            <select
+              class="lang-select"
+              :value="locale"
+              :aria-label="t('app.language.label')"
+              @change="setLocale($event.target.value)"
+            >
+              <option v-for="l in SUPPORTED_LOCALES" :key="l" :value="l">{{ t(`app.language.${l}`) }}</option>
+            </select>
+          </div>
           <button class="theme-toggle" type="button" @click="toggleTheme">
             <span v-if="theme === 'dark'" class="theme-dot theme-dot-dark"></span>
             <span v-else class="theme-dot theme-dot-light"></span>
@@ -998,6 +1012,43 @@ function downloadAll() {
 .btn-outline:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.lang-select-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.lang-select {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 34px;
+  padding: 0 26px 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-mute);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.lang-select:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.lang-select-wrap::after {
+  content: '▼';
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 8px;
+  color: var(--text-faint);
 }
 
 .theme-toggle {

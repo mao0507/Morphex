@@ -1,0 +1,10 @@
+{
+  "app": {
+    "language": {
+      "label": "Language",
+      "zh-TW": "繁體中文",
+      "en": "English",
+      "ja": "日本語"
+    }
+  }
+}
