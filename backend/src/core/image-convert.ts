@@ -1,17 +1,14 @@
 import sharp from 'sharp';
 import { ConversionError } from './errors';
+import { FORMATS } from './formats';
 import { ConvertTuning, FormatDefinition } from './types';
 
-const SHARP_FORMAT: Record<string, keyof sharp.FormatEnum | 'avif'> = {
-  jpg: 'jpeg',
-  png: 'png',
-  webp: 'webp',
-  tiff: 'tiff',
-  avif: 'avif',
-};
-
+// 反查表衍生自 FORMATS（唯一事實來源），不再手動維護第二份圖片格式清單——
+// 加一個圖片格式只要改 formats.ts 一個地方
 const FORMAT_ID_BY_SHARP_FORMAT = Object.fromEntries(
-  Object.entries(SHARP_FORMAT).map(([id, sharpFormat]) => [sharpFormat, id]),
+  FORMATS.filter((format) => format.kind === 'image' && format.sharpFormat).map(
+    (format) => [format.sharpFormat as string, format.id],
+  ),
 );
 
 // 圖片壓縮模式（未指定目標格式）用來把 sharp 讀出的來源格式反查回 FORMATS 的 id，
@@ -55,7 +52,7 @@ export async function runSharpJob(
   plan: SharpConversionPlan,
   onProgress?: (percent: number) => void,
 ): Promise<void> {
-  const sharpFormat = SHARP_FORMAT[plan.targetFormat.id];
+  const sharpFormat = plan.targetFormat.sharpFormat as keyof sharp.FormatEnum;
   if (!sharpFormat) {
     throw new ConversionError(
       'INVALID_INPUT',

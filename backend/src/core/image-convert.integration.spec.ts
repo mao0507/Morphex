@@ -3,7 +3,7 @@ import { spawnSync } from 'child_process';
 import { mkdtempSync, existsSync, rmSync, statSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { convertFile } from './convert';
+import { convertFile, resolveTargetFormat } from './convert';
 import { ConversionError } from './errors';
 import { FFMPEG_PATH } from './ffmpeg-binaries';
 import { formatIdForSharpFormat } from './image-convert';
@@ -118,6 +118,65 @@ describe('convertFile - 圖片 pipeline（整合測試）', () => {
     expect(formatIdForSharpFormat('png')).toBe('png');
     expect(formatIdForSharpFormat('webp')).toBe('webp');
     expect(formatIdForSharpFormat('heif')).toBeUndefined();
+  });
+
+  describe('resolveTargetFormat（深模組介面測試）', () => {
+    it('有帶 format：直接查表，不讀 image metadata', async () => {
+      const inputPath = join(workDir, 'resolve-explicit.jpg');
+      await generateSampleImage(inputPath);
+
+      const resolved = await resolveTargetFormat(inputPath, 'webp');
+
+      expect(resolved.targetFormat.id).toBe('webp');
+      expect(resolved.imageMeta).toBeUndefined();
+    });
+
+    it('沒帶 format＋圖片：用來源格式自動當目標格式，回傳讀到的 imageMeta 供重用', async () => {
+      const inputPath = join(workDir, 'resolve-compress.jpg');
+      await generateSampleImage(inputPath);
+
+      const resolved = await resolveTargetFormat(inputPath);
+
+      expect(resolved.targetFormat.id).toBe('jpg');
+      expect(resolved.imageMeta?.format).toBe('jpeg');
+    });
+
+    it('沒帶 format＋非圖片檔案：丟出 ConversionError(INVALID_INPUT)', async () => {
+      const inputPath = join(workDir, 'resolve-video.mp4');
+      generateSampleVideo(inputPath);
+
+      await expect(resolveTargetFormat(inputPath)).rejects.toMatchObject({
+        code: 'INVALID_INPUT',
+      });
+    });
+
+    it('沒帶 format＋sharp 讀得出但不支援輸出的圖片格式（gif）：丟出 ConversionError(INVALID_INPUT)', async () => {
+      const inputPath = join(workDir, 'resolve-gif.gif');
+      const result = spawnSync(FFMPEG_PATH, [
+        '-y',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=red:s=16x16:d=1',
+        '-frames:v',
+        '1',
+        inputPath,
+      ]);
+      expect(result.status).toBe(0);
+
+      await expect(resolveTargetFormat(inputPath)).rejects.toMatchObject({
+        code: 'INVALID_INPUT',
+      });
+    });
+
+    it('明確指定不支援的格式：丟出 ConversionError(INVALID_INPUT)', async () => {
+      const inputPath = join(workDir, 'resolve-bad-format.jpg');
+      await generateSampleImage(inputPath);
+
+      await expect(
+        resolveTargetFormat(inputPath, 'does-not-exist'),
+      ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+    });
   });
 
   it('圖片轉影片格式：丟出 ConversionError(UNSUPPORTED_COMBINATION)', async () => {

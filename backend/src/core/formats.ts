@@ -175,6 +175,7 @@ export const FORMATS: FormatDefinition[] = [
     ext: 'jpg',
     kind: 'image',
     mimeTypes: ['image/jpeg'],
+    sharpFormat: 'jpeg',
   },
   {
     id: 'png',
@@ -182,6 +183,7 @@ export const FORMATS: FormatDefinition[] = [
     ext: 'png',
     kind: 'image',
     mimeTypes: ['image/png'],
+    sharpFormat: 'png',
   },
   {
     id: 'webp',
@@ -189,6 +191,7 @@ export const FORMATS: FormatDefinition[] = [
     ext: 'webp',
     kind: 'image',
     mimeTypes: ['image/webp'],
+    sharpFormat: 'webp',
   },
   {
     id: 'tiff',
@@ -196,6 +199,7 @@ export const FORMATS: FormatDefinition[] = [
     ext: 'tiff',
     kind: 'image',
     mimeTypes: ['image/tiff'],
+    sharpFormat: 'tiff',
   },
   {
     id: 'avif',
@@ -203,6 +207,7 @@ export const FORMATS: FormatDefinition[] = [
     ext: 'avif',
     kind: 'image',
     mimeTypes: ['image/avif'],
+    sharpFormat: 'avif',
   },
 ];
 

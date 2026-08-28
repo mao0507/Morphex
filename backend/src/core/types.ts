@@ -9,6 +9,9 @@ export interface FormatDefinition {
   audioCodec?: string;
   extraArgs?: string[];
   mimeTypes: string[];
+  // 圖片格式專用：對應 sharp 的 toFormat() 名稱（多數跟 id 同名，jpg 例外是 'jpeg'）。
+  // image-convert.ts 用這個欄位衍生正查/反查表，FORMATS 是唯一要維護的清單
+  sharpFormat?: string;
 }
 
 export type VideoCodecChoice = 'h264' | 'h265' | 'vp9' | 'av1' | 'mpeg4' | 'copy';
