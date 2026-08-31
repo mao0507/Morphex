@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/mao0507/Morphex/compare/morphex-v0.4.1...morphex-v0.4.2) (2026-08-31)
+
+
+### Bug Fixes
+
+* 下載連結失效時顯示錯誤畫面而非導航至空白頁 ([076a3c1](https://github.com/mao0507/Morphex/commit/076a3c1095579c379e6867eedb1e5647c41d24a6))
+
 ## [0.4.1](https://github.com/mao0507/Morphex/compare/morphex-v0.4.0...morphex-v0.4.1) (2026-08-31)
 
 
