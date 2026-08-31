@@ -126,7 +126,10 @@ Windows/macOS 安裝檔另由 GitHub Actions（`release-please` 合併版本 PR 
 
 **目前未簽章**（作業系統層級），直接下載執行會被系統擋下，第一次開啟需要手動放行：
 
-- **macOS**：對 app 「右鍵 → 打開」，或「系統設定 → 隱私權與安全性」裡找到「已封鎖」提示按「仍要打開」
+- **macOS**：對 app 「右鍵 → 打開」，或「系統設定 → 隱私權與安全性」裡找到「已封鎖」提示按「仍要打開」。若跳出「已損毀，無法打開」（新版 macOS 對未簽章 app 常見的錯誤訊息，並非真的損毀，右鍵打開無效），改在終端機執行以下指令清除下載時附加的 quarantine 標記後再開啟：
+  ```bash
+  xattr -cr /Applications/Morphex.app
+  ```
 - **Windows**：SmartScreen 跳出「Windows 已保護您的電腦」時，點「其他資訊 → 仍要執行」
 
 ## 已知限制
