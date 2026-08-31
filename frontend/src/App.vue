@@ -197,7 +197,7 @@ onMounted(async () => {
     defaultFormat.value = formats.value.find((f) => f.kind === 'video')?.id ?? formats.value[0]?.id ?? ''
     defaultImageFormat.value = formats.value.find((f) => f.kind === 'image')?.id ?? ''
   } catch {
-    // 載入失敗時格式清單留空，加入檔案後操作會自然失敗並顯示錯誤
+    rejectionNotice.value = t('notice.formatsLoadFailed')
   }
 })
 

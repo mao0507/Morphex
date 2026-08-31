@@ -47,7 +47,8 @@
   },
   "notice": {
     "skippedNonImage": "已略過非圖片檔案，請切換到「轉換影片」分頁上傳",
-    "skippedNonMedia": "已略過非影音檔案，請切換到「轉換圖片」分頁上傳"
+    "skippedNonMedia": "已略過非影音檔案，請切換到「轉換圖片」分頁上傳",
+    "formatsLoadFailed": "無法連線到轉檔伺服器，請確認伺服器已啟動後重新整理頁面"
   },
   "chips": {
     "label": "預設輸出格式"

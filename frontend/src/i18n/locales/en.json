@@ -47,7 +47,8 @@
   },
   "notice": {
     "skippedNonImage": "Skipped non-image files — switch to the \"Convert Video\" tab to upload them",
-    "skippedNonMedia": "Skipped non-media files — switch to the \"Convert Image\" tab to upload them"
+    "skippedNonMedia": "Skipped non-media files — switch to the \"Convert Image\" tab to upload them",
+    "formatsLoadFailed": "Couldn't connect to the conversion server. Make sure it's running, then reload the page"
   },
   "chips": {
     "label": "Default output format"
