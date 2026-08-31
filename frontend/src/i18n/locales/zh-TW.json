@@ -114,6 +114,7 @@
   },
   "errors": {
     "generic": "轉檔失敗，請稍後再試",
+    "downloadExpired": "下載連結已失效或過期，請重新轉換",
     "code": {
       "INVALID_INPUT": "輸入檔案無效",
       "UNSUPPORTED_COMBINATION": "不支援的格式組合",

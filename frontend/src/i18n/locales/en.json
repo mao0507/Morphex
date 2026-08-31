@@ -114,6 +114,7 @@
   },
   "errors": {
     "generic": "Conversion failed, please try again later",
+    "downloadExpired": "The download link expired or is no longer valid — please convert again",
     "code": {
       "INVALID_INPUT": "Invalid input file",
       "UNSUPPORTED_COMBINATION": "Unsupported format combination",

@@ -114,6 +114,7 @@
   },
   "errors": {
     "generic": "変換に失敗しました。しばらくしてから再度お試しください",
+    "downloadExpired": "ダウンロードリンクが無効か期限切れです。もう一度変換してください",
     "code": {
       "INVALID_INPUT": "無効な入力ファイルです",
       "UNSUPPORTED_COMBINATION": "サポートされていない形式の組み合わせです",

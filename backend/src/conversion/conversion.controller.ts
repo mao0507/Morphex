@@ -62,7 +62,7 @@ export class ConversionController {
       `attachment; filename="converted.${ext}"`,
     );
     const stream = createReadStream(path);
-    stream.on('close', () => {
+    res.on('finish', () => {
       void this.conversionService.releaseOutput(id);
     });
     stream.pipe(res);

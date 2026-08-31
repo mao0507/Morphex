@@ -451,16 +451,30 @@ function convertAll() {
   }
 }
 
+async function triggerDownload(entry) {
+  if (!entry.downloadUrl) return
+  try {
+    const res = await fetch(entry.downloadUrl)
+    if (!res.ok) throw new Error()
+    const blob = await res.blob()
+    const disposition = res.headers.get('Content-Disposition') || ''
+    const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'converted'
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(blobUrl)
+  } catch {
+    markEntryError(entry, t('errors.downloadExpired'))
+  }
+}
+
 function downloadAll() {
   for (const entry of visibleQueue.value) {
-    if (entry.status === 'done' && entry.downloadUrl) {
-      const link = document.createElement('a')
-      link.href = entry.downloadUrl
-      link.download = ''
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-    }
+    if (entry.status === 'done' && entry.downloadUrl) triggerDownload(entry)
   }
 }
 </script>
@@ -670,7 +684,7 @@ function downloadAll() {
             <div class="status-zone">
               <template v-if="entry.status === 'done'">
                 <span class="status-chip status-chip-done">✓ {{ t('status.done') }}</span>
-                <a class="btn-solid" :href="entry.downloadUrl">↓ {{ t('queue.download') }}</a>
+                <button class="btn-solid" type="button" @click="triggerDownload(entry)">↓ {{ t('queue.download') }}</button>
               </template>
               <template v-else-if="entry.status === 'processing'">
                 <div class="progress-col">
