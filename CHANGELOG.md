@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/mao0507/Morphex/compare/morphex-v0.4.0...morphex-v0.4.1) (2026-08-31)
+
+
+### Bug Fixes
+
+* **frontend:** 格式清單載入失敗時顯示提示訊息 ([7815cc0](https://github.com/mao0507/Morphex/commit/7815cc0410344d82440081262de095f59501b20e))
+
 ## [0.4.0](https://github.com/mao0507/Morphex/compare/morphex-v0.3.2...morphex-v0.4.0) (2026-08-28)
 
 
