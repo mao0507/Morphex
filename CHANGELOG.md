@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.3](https://github.com/mao0507/Morphex/compare/morphex-v0.4.2...morphex-v0.4.3) (2026-09-01)
+
+
+### Bug Fixes
+
+* **backend:** 上傳暫存資料夾加入孤兒檔案清除 ([d220861](https://github.com/mao0507/Morphex/commit/d2208612c4e01510a8a38dbf18b6ea2e59f59fd9))
+* **backend:** 下載串流加上錯誤處理避免程序崩潰 ([93aa96c](https://github.com/mao0507/Morphex/commit/93aa96cbfee76a3616b748a5e5b471b1afdd1d9a))
+* **backend:** 修正進度解析取到過舊時間戳的問題 ([d958442](https://github.com/mao0507/Morphex/commit/d9584426cd43ed22115db9c7aea18e2d182e1a66))
+* **backend:** 裁切結束時間早於開始時間時回傳錯誤 ([9c57afa](https://github.com/mao0507/Morphex/commit/9c57afa56a99ee31266a6ddf15f2905d04e670c1))
+* **frontend:** 上傳過濾補上副檔名後備判斷 ([0c9617d](https://github.com/mao0507/Morphex/commit/0c9617d3235027b7a1800b7f4ef7aebc84ac398b))
+* **frontend:** 補上圖片轉檔失敗的錯誤訊息與翻譯 ([f5d72da](https://github.com/mao0507/Morphex/commit/f5d72da95f39940ecc0a494fdccd5f7831b8c2d4))
+
 ## [0.4.2](https://github.com/mao0507/Morphex/compare/morphex-v0.4.1...morphex-v0.4.2) (2026-08-31)
 
 
