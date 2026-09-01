@@ -3,7 +3,7 @@ import { ConversionError } from './errors';
 import { FFMPEG_PATH } from './ffmpeg-binaries';
 
 const DEFAULT_FFMPEG_TIMEOUT_MS = 5 * 60 * 1000;
-const PROGRESS_TIME_RE = /time=(\d+):(\d+):(\d+(?:\.\d+)?)/;
+const PROGRESS_TIME_RE = /time=(\d+):(\d+):(\d+(?:\.\d+)?)/g;
 
 export interface RunFfmpegJobOptions {
   timeoutMs?: number;
@@ -37,7 +37,8 @@ export function runFfmpegJob(
       stderr += text;
 
       if (onProgress && durationSec && durationSec > 0) {
-        const match = text.match(PROGRESS_TIME_RE);
+        const matches = [...text.matchAll(PROGRESS_TIME_RE)];
+        const match = matches[matches.length - 1];
         if (match) {
           const elapsed =
             Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3]);
