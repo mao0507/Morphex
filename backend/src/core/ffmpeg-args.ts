@@ -90,7 +90,13 @@ export function buildFfmpegArgs(
 
   if (tuning.trimEndSec !== undefined) {
     const duration = tuning.trimEndSec - (tuning.trimStartSec ?? 0);
-    if (duration > 0) args.push('-t', String(duration));
+    if (duration <= 0) {
+      throw new ConversionError(
+        'INVALID_INPUT',
+        '裁切結束時間必須晚於開始時間',
+      );
+    }
+    args.push('-t', String(duration));
   }
 
   // 語意契約見 ConvertTuning.stripMetadata（types.ts）；ffmpeg 預設就是保留，
