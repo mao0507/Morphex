@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Logger,
   Param,
   Post,
   Res,
@@ -20,6 +21,8 @@ import { parseTuningOptions } from './tuning.parser';
 
 @Controller()
 export class ConversionController {
+  private readonly logger = new Logger(ConversionController.name);
+
   constructor(private readonly conversionService: ConversionService) {}
 
   @Get('formats')
@@ -62,6 +65,14 @@ export class ConversionController {
       `attachment; filename="converted.${ext}"`,
     );
     const stream = createReadStream(path);
+    stream.on('error', (err) => {
+      this.logger.warn(`下載讀取失敗 (${id}): ${err.message}`);
+      if (!res.headersSent) {
+        res.status(500).end();
+      } else {
+        res.destroy(err);
+      }
+    });
     res.on('finish', () => {
       void this.conversionService.releaseOutput(id);
     });
