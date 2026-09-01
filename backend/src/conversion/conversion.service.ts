@@ -20,7 +20,7 @@ import {
 } from '../core/convert';
 import { ConvertTuning, FormatDefinition } from '../core/types';
 import { FORMATS, getFormatById } from '../core/formats';
-import { ensureStorageDirs, OUTPUTS_DIR } from './storage.paths';
+import { ensureStorageDirs, OUTPUTS_DIR, UPLOADS_DIR } from './storage.paths';
 
 export type JobStatus = 'queued' | 'processing' | 'done' | 'error';
 
@@ -230,6 +230,25 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
     } catch (err) {
       this.logger.warn(
         '掃描殘留輸出檔案失敗',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+
+    // 額外保護：上傳檔案理論上會在 job 結束時立即刪除，殘留在資料夾裡
+    // 且已過期的檔案必是 removeQuietly 失敗留下的孤兒，直接清除
+    try {
+      const fs = await import('fs/promises');
+      const files = await fs.readdir(UPLOADS_DIR);
+      for (const name of files) {
+        const fullPath = join(UPLOADS_DIR, name);
+        const info = await stat(fullPath).catch(() => null);
+        if (info && now - info.mtimeMs > OUTPUT_TTL_MS) {
+          await this.removeQuietly(fullPath);
+        }
+      }
+    } catch (err) {
+      this.logger.warn(
+        '掃描殘留上傳檔案失敗',
         err instanceof Error ? err.message : String(err),
       );
     }
