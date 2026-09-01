@@ -120,7 +120,8 @@
       "UNSUPPORTED_COMBINATION": "サポートされていない形式の組み合わせです",
       "PROBE_FAILED": "ファイルの内容を解析できませんでした",
       "FFMPEG_FAILED": "変換処理中にエラーが発生しました",
-      "TIMEOUT": "変換がタイムアウトしました"
+      "TIMEOUT": "変換がタイムアウトしました",
+      "IMAGE_CONVERT_FAILED": "画像の変換に失敗しました"
     }
   }
 }

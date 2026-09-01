@@ -120,7 +120,8 @@
       "UNSUPPORTED_COMBINATION": "不支援的格式組合",
       "PROBE_FAILED": "無法解析檔案內容",
       "FFMPEG_FAILED": "轉檔過程發生錯誤",
-      "TIMEOUT": "轉檔逾時"
+      "TIMEOUT": "轉檔逾時",
+      "IMAGE_CONVERT_FAILED": "圖片轉檔失敗"
     }
   }
 }

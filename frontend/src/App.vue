@@ -360,7 +360,7 @@ function stopPolling(entry) {
   }
 }
 
-const KNOWN_ERROR_CODES = ['INVALID_INPUT', 'UNSUPPORTED_COMBINATION', 'PROBE_FAILED', 'FFMPEG_FAILED', 'TIMEOUT']
+const KNOWN_ERROR_CODES = ['INVALID_INPUT', 'UNSUPPORTED_COMBINATION', 'PROBE_FAILED', 'FFMPEG_FAILED', 'TIMEOUT', 'IMAGE_CONVERT_FAILED']
 
 // 只翻通用錯誤分類，不翻後端回傳的技術細節——那些是給除錯用的固定字串
 function errorLabel(code) {

@@ -120,7 +120,8 @@
       "UNSUPPORTED_COMBINATION": "Unsupported format combination",
       "PROBE_FAILED": "Could not read file content",
       "FFMPEG_FAILED": "An error occurred during conversion",
-      "TIMEOUT": "Conversion timed out"
+      "TIMEOUT": "Conversion timed out",
+      "IMAGE_CONVERT_FAILED": "Image conversion failed"
     }
   }
 }
