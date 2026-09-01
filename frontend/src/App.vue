@@ -260,13 +260,27 @@ function makeEntry(file, formatId) {
   }
 }
 
+function fileExtension(name) {
+  const idx = name.lastIndexOf('.')
+  return idx === -1 ? '' : name.slice(idx + 1).toLowerCase()
+}
+
 // 分頁只是前端的第一道防線（accept 屬性 + 這裡的 mimetype 過濾），真正的
-// 圖片/影音判定以後端 sharp/ffprobe 探測結果為準，避免副檔名造假繞過
+// 圖片/影音判定以後端 sharp/ffprobe 探測結果為準，避免副檔名造假繞過。
+// 部分格式（mkv/wma/3gp...）瀏覽器的 File.type 會回傳空字串，這時退而
+// 用副檔名比對後端 /formats 回傳的支援清單，避免合法檔案被誤擋。
 function addFiles(fileList) {
   const isImageTab = activeTab.value === 'image'
-  const predicate = isImageTab
-    ? (file) => file.type.startsWith('image/')
-    : (file) => file.type.startsWith('video/') || file.type.startsWith('audio/')
+  const acceptedKinds = isImageTab ? ['image'] : ['video', 'audio']
+  const knownExts = new Set(
+    formats.value.filter((f) => acceptedKinds.includes(f.kind)).map((f) => f.ext.toLowerCase())
+  )
+  const predicate = (file) => {
+    if (isImageTab ? file.type.startsWith('image/') : file.type.startsWith('video/') || file.type.startsWith('audio/')) {
+      return true
+    }
+    return knownExts.has(fileExtension(file.name))
+  }
 
   const all = Array.from(fileList)
   const accepted = all.filter(predicate)
