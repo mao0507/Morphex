@@ -190,15 +190,21 @@ onMounted(async () => {
     }, shellRef.value)
   }
 
-  try {
-    const res = await fetch(`${API_BASE}/formats`)
-    if (!res.ok) throw new Error('無法載入格式清單')
-    formats.value = await res.json()
-    defaultFormat.value = formats.value.find((f) => f.kind === 'video')?.id ?? formats.value[0]?.id ?? ''
-    defaultImageFormat.value = formats.value.find((f) => f.kind === 'image')?.id ?? ''
-  } catch {
-    rejectionNotice.value = t('notice.formatsLoadFailed')
+  // 桌面版 webview 比 sidecar 後端先起來（首次啟動 Gatekeeper 掃描時可能要好幾秒），
+  // 第一次打 /formats 常會 connection refused，所以重試到後端就緒為止
+  for (let attempt = 0; attempt < 40; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}/formats`)
+      if (!res.ok) throw new Error('無法載入格式清單')
+      formats.value = await res.json()
+      defaultFormat.value = formats.value.find((f) => f.kind === 'video')?.id ?? formats.value[0]?.id ?? ''
+      defaultImageFormat.value = formats.value.find((f) => f.kind === 'image')?.id ?? ''
+      return
+    } catch {
+      await new Promise((r) => setTimeout(r, 500))
+    }
   }
+  rejectionNotice.value = t('notice.formatsLoadFailed')
 })
 
 onUnmounted(() => {
