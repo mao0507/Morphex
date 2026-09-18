@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.4](https://github.com/mao0507/Morphex/compare/morphex-v0.4.3...morphex-v0.4.4) (2026-09-18)
+
+
+### Bug Fixes
+
+* **desktop:** CSP img-src 允許 blob: 以顯示圖片縮圖 ([39fe44d](https://github.com/mao0507/Morphex/commit/39fe44dfc19c1952e271aab3d1187342fd5952ec))
+* **frontend:** 格式清單載入失敗時自動重試 ([155e0fb](https://github.com/mao0507/Morphex/commit/155e0fbdceddfe0e41ec1c8dd715349231508ab2))
+
 ## [0.4.3](https://github.com/mao0507/Morphex/compare/morphex-v0.4.2...morphex-v0.4.3) (2026-09-01)
 
 
