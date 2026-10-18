@@ -3,6 +3,10 @@ import { ConversionError } from './errors';
 import { FORMATS } from './formats';
 import { ConvertTuning, FormatDefinition } from './types';
 
+// libvips 的 operation cache 會讓讀過的輸入檔保持開啟；Windows 上檔案開著就刪不掉，
+// 轉完的上傳檔會變成孤兒。每個檔案只處理一次，cache 沒有好處
+sharp.cache(false);
+
 // 反查表衍生自 FORMATS（唯一事實來源），不再手動維護第二份圖片格式清單——
 // 加一個圖片格式只要改 formats.ts 一個地方
 const FORMAT_ID_BY_SHARP_FORMAT = Object.fromEntries(
