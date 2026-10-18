@@ -9,7 +9,6 @@ import {
   formatIdForSharpFormat,
   runSharpJob,
   tryReadImageMetadata,
-  validateImageCombination,
   SharpConversionPlan,
 } from './image-convert';
 import { ConversionError } from './errors';
@@ -74,11 +73,37 @@ export async function resolveTargetFormat(
   return { targetFormat, imageMeta };
 }
 
+// 路由規則的唯一出處：依「目標格式種類」+「sharp 讀不讀得出、是不是動態圖」決定 engine。
+// - 目標是圖片：來源必須是 sharp 讀得出的圖片
+// - 目標是影音：靜態圖片不行；動態圖（例如動態 GIF，pages > 1）與一般影音走 ffprobe + ffmpeg
+// 是不是圖片由 sharp 自己讀不讀得出 metadata 決定，不信任副檔名或前端宣稱的類型
+async function chooseEngine(
+  inputPath: string,
+  targetFormat: FormatDefinition,
+  knownImageMeta?: sharp.Metadata,
+): Promise<{ engine: 'sharp' } | { engine: 'ffmpeg' }> {
+  const imageMeta = knownImageMeta ?? (await tryReadImageMetadata(inputPath));
+  if (targetFormat.kind === 'image') {
+    if (!imageMeta) {
+      throw new ConversionError(
+        'UNSUPPORTED_COMBINATION',
+        '影音檔案無法轉換為圖片格式',
+      );
+    }
+    return { engine: 'sharp' };
+  }
+  if (imageMeta && (imageMeta.pages ?? 1) <= 1) {
+    throw new ConversionError(
+      'UNSUPPORTED_COMBINATION',
+      '靜態圖片只能轉換為圖片格式',
+    );
+  }
+  return { engine: 'ffmpeg' };
+}
+
 // 只做驗證 + 組裝轉檔計畫，不真正啟動 ffmpeg/sharp；讓呼叫端能在排入轉檔工作前
-// 先同步取得驗證結果。是不是圖片由 sharp 自己讀不讀得出 metadata 決定（跟
-// ffprobe 對影音的角色一樣），讀得出來就整段走獨立的 sharp pipeline，
-// 讀不出來才退回原本的 ffprobe + ffmpeg 流程。knownImageMeta 選填，呼叫端如果
-// 已經透過 resolveTargetFormat 讀過一次就傳進來，這裡不會再讀第二次
+// 先同步取得驗證結果。knownImageMeta 選填，呼叫端如果已經透過 resolveTargetFormat
+// 讀過一次就傳進來，這裡不會再讀第二次
 export async function prepareConversion(
   options: Omit<ConvertOptions, 'onProgress'> & {
     knownImageMeta?: sharp.Metadata;
@@ -92,10 +117,12 @@ export async function prepareConversion(
     );
   }
 
-  const imageMeta =
-    options.knownImageMeta ?? (await tryReadImageMetadata(options.inputPath));
-  if (imageMeta) {
-    validateImageCombination(targetFormat);
+  const { engine } = await chooseEngine(
+    options.inputPath,
+    targetFormat,
+    options.knownImageMeta,
+  );
+  if (engine === 'sharp') {
     return {
       plan: {
         engine: 'sharp',

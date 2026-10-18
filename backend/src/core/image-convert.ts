@@ -43,15 +43,6 @@ export async function tryReadImageMetadata(
   }
 }
 
-export function validateImageCombination(targetFormat: FormatDefinition): void {
-  if (targetFormat.kind !== 'image') {
-    throw new ConversionError(
-      'UNSUPPORTED_COMBINATION',
-      '圖片檔案只能轉換為圖片格式',
-    );
-  }
-}
-
 export async function runSharpJob(
   plan: SharpConversionPlan,
   onProgress?: (percent: number) => void,
