@@ -7,13 +7,15 @@ export const POLL_INTERVAL_MS = 800
 // 前端自己產生的錯誤碼；後端的錯誤碼（INVALID_INPUT 等）原樣透傳，null 代表無法分類
 export const DOWNLOAD_EXPIRED = 'DOWNLOAD_EXPIRED'
 
-// 空字串/false 代表「用預設值」不送；開關類欄位送 'true'，其餘原樣送字串
+// 空字串/false/null 代表「用預設值」不送；0 是合法值（例如 crf=0 無損）要照送。
+// 開關類欄位送 'true'，其餘原樣送字串，由後端驗證範圍
 function buildFormData(entry) {
   const formData = new FormData()
   formData.append('file', entry.file)
   if (!entry.compressMode) formData.append('format', entry.format)
   for (const [key, value] of Object.entries(entry.tuning)) {
-    if (value) formData.append(key, value === true ? 'true' : value)
+    if (value === '' || value === false || value == null) continue
+    formData.append(key, value === true ? 'true' : String(value))
   }
   return formData
 }

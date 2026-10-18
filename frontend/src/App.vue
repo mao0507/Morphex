@@ -692,7 +692,7 @@ function downloadAll() {
 
               <label class="settings-field settings-field-wide">
                 <span class="settings-label">{{ t('settings.videoBitrate') }}</span>
-                <input class="settings-input" type="number" min="0" :placeholder="t('presets.auto')" v-model="entry.tuning.videoBitrate" />
+                <input class="settings-input" type="number" min="1" :placeholder="t('presets.auto')" v-model="entry.tuning.videoBitrate" />
               </label>
 
               <div class="settings-field settings-field-wide">

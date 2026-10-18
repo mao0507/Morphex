@@ -52,6 +52,20 @@ describe('conversion queue', () => {
     expect(entry.errorCode).toBe('UNSUPPORTED_COMBINATION')
   })
 
+  it('tuning 的 0 值照送，空字串與 false 不送', async () => {
+    const fetch = fakeBackend({ '/convert': json(202, { id: 'j1', status: 'processing', progress: 0 }) })
+    const queue = createConversionQueue({ fetch, apiBase: API, saveBlob: vi.fn() })
+    const entry = { ...makeEntry(), tuning: { crf: 0, contrast: '0', preset: '', denoise: false, normalizeAudio: true } }
+
+    await queue.start(entry)
+    queue.stop(entry)
+
+    const sent = Object.fromEntries(fetch.mock.calls[0][1].body.entries())
+    expect(sent).toMatchObject({ format: 'mp3', crf: '0', contrast: '0', normalizeAudio: 'true' })
+    expect(sent).not.toHaveProperty('preset')
+    expect(sent).not.toHaveProperty('denoise')
+  })
+
   it('輪詢不重疊，停止後晚到的回應不改狀態', async () => {
     const slow = deferred()
     const fetch = fakeBackend({
