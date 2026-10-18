@@ -177,18 +177,22 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
     return { code: 'FFMPEG_FAILED', message: '轉檔過程發生錯誤，請稍後再試' };
   }
 
+  // body 跟 GET /convert/:id/status 的 error 欄位同形 { code, message }，前端靠 code 顯示對應訊息
   private toHttpException(err: unknown): HttpException {
     const payload = this.toErrorPayload(err);
     switch (payload.code) {
       case 'INVALID_INPUT':
       case 'UNSUPPORTED_COMBINATION':
       case 'PROBE_FAILED':
-        return new BadRequestException(payload.message);
+        return new BadRequestException(payload);
       case 'TIMEOUT':
-        return new RequestTimeoutException(payload.message);
+        return new RequestTimeoutException(payload);
       case 'FFMPEG_FAILED':
       default:
-        return new InternalServerErrorException('轉檔過程發生錯誤，請稍後再試');
+        return new InternalServerErrorException({
+          code: payload.code,
+          message: '轉檔過程發生錯誤，請稍後再試',
+        });
     }
   }
 
