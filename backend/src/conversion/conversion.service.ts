@@ -18,6 +18,7 @@ import { join } from 'path';
 import { pipeline, Writable } from 'stream';
 import { ConversionError } from '../core/errors';
 import { ConvertTuning } from '../core/types';
+import { ConvertRequestBody, parseConvertRequest } from './tuning.parser';
 import { FORMATS, getFormatById } from '../core/formats';
 import { coreEngine } from './core-engine';
 import { OUTPUTS_DIR, UPLOADS_DIR } from './storage.paths';
@@ -107,15 +108,16 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
 
   // 同步完成格式解析、probe 與參數組裝（快），失敗就直接回 4xx；
   // 真正耗時的編碼則在背景執行，透過 job 的 progress 供前端輪詢
+  // 解析 body 也在 try 裡：不合法的參數跟 prepare 失敗一樣，刪掉上傳檔、回 { code, message }
   async convert(
     file: Express.Multer.File,
-    targetFormatId: string | undefined,
-    tuning?: ConvertTuning,
+    body: ConvertRequestBody,
   ): Promise<{ id: string; status: JobStatus; progress: number }> {
     const id = randomUUID();
 
     let prepared: PreparedJob;
     try {
+      const { targetFormatId, tuning } = parseConvertRequest(body);
       prepared = await this.deps.engine.prepare({
         inputPath: file.path,
         targetFormatId,

@@ -15,7 +15,6 @@ import type { Response } from 'express';
 import { ConversionService } from './conversion.service';
 import { multerOptions } from './multer.config';
 import type { ConvertRequestBody } from './tuning.parser';
-import { parseTuningOptions } from './tuning.parser';
 
 @Controller()
 export class ConversionController {
@@ -36,15 +35,7 @@ export class ConversionController {
     if (!file) {
       throw new BadRequestException('請上傳檔案');
     }
-    if (body.format !== undefined && typeof body.format !== 'string') {
-      throw new BadRequestException('請指定輸出格式');
-    }
-
-    return this.conversionService.convert(
-      file,
-      body.format,
-      parseTuningOptions(body),
-    );
+    return this.conversionService.convert(file, body);
   }
 
   @Get('convert/:id/status')

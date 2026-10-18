@@ -103,7 +103,7 @@ describe('ConversionService', () => {
     const service = makeService(engine);
     const file = await upload();
 
-    const { id } = await service.convert(file, 'mp3');
+    const { id } = await service.convert(file, { format: 'mp3' });
     await new Promise((r) => setImmediate(r));
     expect(service.getStatus(id).progress).toBe(50);
     finishRun();
@@ -126,7 +126,7 @@ describe('ConversionService', () => {
     const service = makeService(engine);
     const file = await upload();
 
-    const { id } = await service.convert(file, 'mp3');
+    const { id } = await service.convert(file, { format: 'mp3' });
     finishRun(new ConversionError('TIMEOUT', '轉檔逾時'));
     await waitForStatus(service, id, 'error');
 
@@ -145,7 +145,9 @@ describe('ConversionService', () => {
     const service = makeService(engine);
     const file = await upload();
 
-    const err = await service.convert(file, 'mp4').catch((e: unknown) => e);
+    const err = await service
+      .convert(file, { format: 'mp4' })
+      .catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(HttpException);
     expect((err as HttpException).getStatus()).toBe(400);
@@ -156,10 +158,29 @@ describe('ConversionService', () => {
     expect(existsSync(file.path)).toBe(false);
   });
 
+  it('tuning 不合法時刪除 input 並拋出帶 code 的 400，不呼叫 engine', async () => {
+    const prepare = jest.fn();
+    const service = makeService({ prepare });
+    const file = await upload();
+
+    const err = await service
+      .convert(file, { format: 'mp4', crf: '99' })
+      .catch((e: unknown) => e);
+
+    expect((err as HttpException).getStatus()).toBe(400);
+    expect((err as HttpException).getResponse()).toMatchObject({
+      code: 'INVALID_INPUT',
+    });
+    expect(existsSync(file.path)).toBe(false);
+    expect(prepare).not.toHaveBeenCalled();
+  });
+
   it('sweep 清掉過期 job 與未追蹤的孤兒檔，保留還在追蹤的檔案', async () => {
     const { engine, finishRun } = fakeEngine();
     const service = makeService(engine);
-    const { id: oldId } = await service.convert(await upload('old'), 'mp3');
+    const { id: oldId } = await service.convert(await upload('old'), {
+      format: 'mp3',
+    });
     finishRun();
     await waitForStatus(service, oldId, 'done');
 
@@ -173,7 +194,9 @@ describe('ConversionService', () => {
     await utimes(orphanOutput, ancient, ancient);
 
     clock += JOB_TTL_MS + 1;
-    const { id: freshId } = await service.convert(await upload('fresh'), 'mp3');
+    const { id: freshId } = await service.convert(await upload('fresh'), {
+      format: 'mp3',
+    });
     finishRun();
     await waitForStatus(service, freshId, 'done');
     const [freshOutput] = await readdir(outputsDir).then((names) =>
@@ -192,7 +215,7 @@ describe('ConversionService', () => {
   it('下載中途中斷時保留 output，直到 TTL 過期', async () => {
     const { engine, finishRun } = fakeEngine();
     const service = makeService(engine);
-    const { id } = await service.convert(await upload(), 'mp3');
+    const { id } = await service.convert(await upload(), { format: 'mp3' });
     finishRun();
     await waitForStatus(service, id, 'done');
 
