@@ -1,4 +1,5 @@
 import { spawnSync } from 'child_process';
+import { FFPROBE_PATH } from './ffmpeg-binaries';
 import { mkdtempSync, existsSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -89,4 +90,36 @@ describe('convertFile (整合測試，需本機已安裝 ffmpeg/ffprobe)', () =>
       convertFile({ inputPath, outputPath, targetFormatId: 'does-not-exist' }),
     ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
   }, 15_000);
+
+  it('裁切 + 加速：只讀取裁切區間，輸出長度為區間 ÷ 倍率', async () => {
+    const inputPath = join(workDir, 'long.wav');
+    const outputPath = join(workDir, 'long-out.wav');
+    const gen = spawnSync(FFMPEG_PATH, [
+      '-y',
+      '-f',
+      'lavfi',
+      '-i',
+      'sine=duration=40',
+      inputPath,
+    ]);
+    expect(gen.status).toBe(0);
+
+    await convertFile({
+      inputPath,
+      outputPath,
+      targetFormatId: 'wav',
+      tuning: { trimStartSec: 5, trimEndSec: 15, speed: 2 },
+    });
+
+    const probe = spawnSync(FFPROBE_PATH, [
+      '-v',
+      'error',
+      '-show_entries',
+      'format=duration',
+      '-of',
+      'csv=p=0',
+      outputPath,
+    ]);
+    expect(Number(probe.stdout.toString())).toBeCloseTo(5, 0);
+  }, 30_000);
 });

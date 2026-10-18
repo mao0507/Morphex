@@ -3,7 +3,7 @@ import { FormatDefinition } from './types';
 import { getFormatById } from './formats';
 import { probeFile } from './probe';
 import { detectMediaKind } from './detect';
-import { buildFfmpegArgs } from './ffmpeg-args';
+import { buildFfmpegArgs, expectedOutputDurationSec } from './ffmpeg-args';
 import { runFfmpegJob } from './run-job';
 import {
   formatIdForSharpFormat,
@@ -29,6 +29,7 @@ export interface ConvertResult {
 }
 
 export type EnginePlan =
+  // durationSec：預期輸出長度（進度分母），見 expectedOutputDurationSec
   | { engine: 'ffmpeg'; args: string[]; durationSec?: number }
   | SharpConversionPlan;
 
@@ -119,13 +120,16 @@ export async function prepareConversion(
     options.tuning,
   );
 
-  const durationSec = Number(probe.format?.duration);
+  const sourceSec = Number(probe.format?.duration);
 
   return {
     plan: {
       engine: 'ffmpeg',
       args,
-      durationSec: Number.isFinite(durationSec) ? durationSec : undefined,
+      durationSec: expectedOutputDurationSec(
+        Number.isFinite(sourceSec) ? sourceSec : undefined,
+        options.tuning,
+      ),
     },
     inputKind,
     outputFormatId: targetFormat.id,
