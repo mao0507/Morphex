@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { gsap } from 'gsap'
 import { SUPPORTED_LOCALES, setLocale } from './i18n'
+import { createConversionQueue, DOWNLOAD_EXPIRED } from './conversion-queue'
 
 const { t, locale } = useI18n()
 
@@ -84,14 +85,6 @@ const ROTATE_PRESETS = computed(() => [
   { value: '270', label: '270°' },
 ])
 
-const STATUS_LABEL = computed(() => ({
-  idle: t('status.idle'),
-  queued: t('status.queued'),
-  processing: t('status.processing'),
-  done: t('status.done'),
-  error: t('status.error'),
-}))
-
 const formats = ref([])
 const queue = ref([])
 const defaultFormat = ref('')
@@ -113,7 +106,7 @@ const imageFormats = computed(() => formats.value.filter((f) => f.kind === 'imag
 const visibleQueue = computed(() => queue.value.filter((e) => entryTabKind(e) === activeTab.value))
 const hasIdleOrError = computed(() => visibleQueue.value.some((e) => e.status === 'idle' || e.status === 'error'))
 const hasDone = computed(() => visibleQueue.value.some((e) => e.status === 'done'))
-const doneCount = computed(() => visibleQueue.value.filter((e) => e.status === 'done').length)
+const doneCount = computed(() => visibleQueue.value.filter((e) => e.status === 'done' || e.status === 'downloaded').length)
 const processingCount = computed(() => visibleQueue.value.filter((e) => e.status === 'processing' || e.status === 'queued').length)
 const idleCount = computed(() => visibleQueue.value.filter((e) => e.status === 'idle').length)
 const errorCount = computed(() => visibleQueue.value.filter((e) => e.status === 'error').length)
@@ -208,7 +201,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  for (const entry of queue.value) stopPolling(entry)
+  for (const entry of queue.value) conversionQueue.stop(entry)
   gsapCtx?.revert()
 })
 
@@ -261,8 +254,7 @@ function makeEntry(file, formatId) {
     progress: 0,
     jobId: null,
     downloadUrl: null,
-    errorMessage: '',
-    pollTimerId: null,
+    errorCode: null,
   }
 }
 
@@ -354,148 +346,45 @@ function applyTuningToAll(entry) {
 }
 
 function removeEntry(entry) {
-  stopPolling(entry)
+  conversionQueue.stop(entry)
   URL.revokeObjectURL(entry.previewUrl)
   queue.value = queue.value.filter((e) => e.localId !== entry.localId)
-}
-
-function stopPolling(entry) {
-  if (entry.pollTimerId) {
-    clearInterval(entry.pollTimerId)
-    entry.pollTimerId = null
-  }
 }
 
 const KNOWN_ERROR_CODES = ['INVALID_INPUT', 'UNSUPPORTED_COMBINATION', 'PROBE_FAILED', 'FFMPEG_FAILED', 'TIMEOUT', 'IMAGE_CONVERT_FAILED']
 
 // 只翻通用錯誤分類，不翻後端回傳的技術細節——那些是給除錯用的固定字串
 function errorLabel(code) {
+  if (code === DOWNLOAD_EXPIRED) return t('errors.downloadExpired')
   return KNOWN_ERROR_CODES.includes(code) ? t(`errors.code.${code}`) : t('errors.generic')
 }
 
-function markEntryError(entry, message) {
-  entry.status = 'error'
-  entry.errorMessage = message
+function saveBlob(blob, filename) {
+  const blobUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(blobUrl)
 }
 
-function markEntryDone(entry, downloadUrl) {
-  entry.status = 'done'
-  entry.progress = 100
-  entry.downloadUrl = downloadUrl
+function pulseCard(entry) {
+  const card = document.querySelector(`[data-local-id="${entry.localId}"]`)
+  if (card) gsap.fromTo(card, { scale: 1 }, { scale: 1.015, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' })
 }
 
-function buildFormData(entry) {
-  const formData = new FormData()
-  formData.append('file', entry.file)
-  if (!entry.compressMode) formData.append('format', entry.format)
-  const t = entry.tuning
-  if (t.resolution) formData.append('resolution', t.resolution)
-  if (t.frameRate) formData.append('frameRate', t.frameRate)
-  if (t.videoBitrate) formData.append('videoBitrate', t.videoBitrate)
-  if (t.audioBitrate) formData.append('audioBitrate', t.audioBitrate)
-  if (t.trimStart) formData.append('trimStart', t.trimStart)
-  if (t.trimEnd) formData.append('trimEnd', t.trimEnd)
-  if (t.normalizeAudio) formData.append('normalizeAudio', 'true')
-  if (t.stripMetadata) formData.append('stripMetadata', 'true')
-  if (t.videoCodec) formData.append('videoCodec', t.videoCodec)
-  if (t.audioCodec) formData.append('audioCodec', t.audioCodec)
-  if (t.crf) formData.append('crf', t.crf)
-  if (t.preset) formData.append('preset', t.preset)
-  if (t.audioChannels) formData.append('audioChannels', t.audioChannels)
-  if (t.sampleRate) formData.append('sampleRate', t.sampleRate)
-  if (t.rotate) formData.append('rotate', t.rotate)
-  if (t.flipHorizontal) formData.append('flipHorizontal', 'true')
-  if (t.flipVertical) formData.append('flipVertical', 'true')
-  if (t.speed) formData.append('speed', t.speed)
-  if (t.deinterlace) formData.append('deinterlace', 'true')
-  if (t.denoise) formData.append('denoise', 'true')
-  if (t.brightness) formData.append('brightness', t.brightness)
-  if (t.contrast) formData.append('contrast', t.contrast)
-  if (t.saturation) formData.append('saturation', t.saturation)
-  if (t.quality) formData.append('quality', t.quality)
-  return formData
-}
-
-async function startConversion(entry) {
-  stopPolling(entry)
-  entry.status = 'queued'
-  entry.progress = 0
-  entry.errorMessage = ''
-  entry.downloadUrl = null
-
-  try {
-    const res = await fetch(`${API_BASE}/convert`, {
-      method: 'POST',
-      body: buildFormData(entry),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error()
-
-    entry.jobId = data.id
-    entry.status = 'processing'
-    entry.progress = data.progress ?? 0
-    pollStatus(entry)
-  } catch {
-    markEntryError(entry, t('errors.generic'))
-  }
-}
-
-function pollStatus(entry) {
-  entry.pollTimerId = setInterval(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/convert/${entry.jobId}/status`)
-      const data = await res.json()
-      if (!res.ok) throw new Error()
-
-      entry.progress = data.progress ?? entry.progress
-
-      if (data.status === 'done') {
-        stopPolling(entry)
-        markEntryDone(entry, `${API_BASE}${data.downloadUrl}`)
-        const card = document.querySelector(`[data-local-id="${entry.localId}"]`)
-        if (card) gsap.fromTo(card, { scale: 1 }, { scale: 1.015, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' })
-      } else if (data.status === 'error') {
-        stopPolling(entry)
-        markEntryError(entry, errorLabel(data.error?.code))
-      }
-    } catch {
-      stopPolling(entry)
-      markEntryError(entry, t('errors.generic'))
-    }
-  }, 800)
-}
+const conversionQueue = createConversionQueue({ fetch, apiBase: API_BASE, saveBlob, onDone: pulseCard })
 
 function convertAll() {
   for (const entry of visibleQueue.value) {
-    if (entry.status === 'idle' || entry.status === 'error') startConversion(entry)
-  }
-}
-
-async function triggerDownload(entry) {
-  if (!entry.downloadUrl) return
-  try {
-    const res = await fetch(entry.downloadUrl)
-    if (!res.ok) throw new Error()
-    const blob = await res.blob()
-    const disposition = res.headers.get('Content-Disposition') || ''
-    const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'converted'
-    const blobUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = blobUrl
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(blobUrl)
-  } catch {
-    markEntryError(entry, t('errors.downloadExpired'))
+    if (entry.status === 'idle' || entry.status === 'error') conversionQueue.start(entry)
   }
 }
 
 function downloadAll() {
-  for (const entry of visibleQueue.value) {
-    if (entry.status === 'done' && entry.downloadUrl) triggerDownload(entry)
-  }
+  for (const entry of visibleQueue.value) conversionQueue.download(entry)
 }
 </script>
 
@@ -704,7 +593,10 @@ function downloadAll() {
             <div class="status-zone">
               <template v-if="entry.status === 'done'">
                 <span class="status-chip status-chip-done">✓ {{ t('status.done') }}</span>
-                <button class="btn-solid" type="button" @click="triggerDownload(entry)">↓ {{ t('queue.download') }}</button>
+                <button class="btn-solid" type="button" @click="conversionQueue.download(entry)">↓ {{ t('queue.download') }}</button>
+              </template>
+              <template v-else-if="entry.status === 'downloaded'">
+                <span class="status-chip status-chip-done">✓ {{ t('status.downloaded') }}</span>
               </template>
               <template v-else-if="entry.status === 'processing'">
                 <div class="progress-col">
@@ -721,12 +613,12 @@ function downloadAll() {
                 <span class="status-chip status-chip-queued"><span class="status-dot"></span>{{ t('status.queued') }}</span>
               </template>
               <template v-else-if="entry.status === 'error'">
-                <span class="status-chip status-chip-error">{{ entry.errorMessage || STATUS_LABEL.error }}</span>
-                <button class="btn-solid" type="button" @click="startConversion(entry)">{{ t('queue.retry') }}</button>
+                <span class="status-chip status-chip-error">{{ errorLabel(entry.errorCode) }}</span>
+                <button class="btn-solid" type="button" @click="conversionQueue.start(entry)">{{ t('queue.retry') }}</button>
               </template>
               <template v-else>
                 <span class="status-chip status-chip-idle"><span class="status-dot"></span>{{ t('status.idle') }}</span>
-                <button class="btn-solid" type="button" @click="startConversion(entry)">{{ t('queue.convert') }}</button>
+                <button class="btn-solid" type="button" @click="conversionQueue.start(entry)">{{ t('queue.convert') }}</button>
               </template>
             </div>
 

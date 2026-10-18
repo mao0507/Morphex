@@ -63,6 +63,7 @@
     "queued": "Queued",
     "processing": "Converting",
     "done": "Done",
+    "downloaded": "Downloaded",
     "error": "Failed"
   },
   "settings": {
