@@ -160,7 +160,7 @@ function isImageEntry(entry) {
   return entry.kind === 'image'
 }
 
-// 縮圖只看瀏覽器能不能直接顯示：影音分頁的 GIF 也用 <img> 預覽
+// 縮圖只看瀏覽器能不能直接顯示：影音分頁的 GIF 也用圖片元素預覽
 function thumbKind(file, kind) {
   if (kind === 'image' || file.type.startsWith('image/')) return 'image'
   if (file.type.startsWith('video/')) return 'video'
