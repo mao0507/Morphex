@@ -4,7 +4,6 @@ import {
   Controller,
   Get,
   HttpCode,
-  Logger,
   Param,
   Post,
   Res,
@@ -13,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import { createReadStream } from 'fs';
 import { ConversionService } from './conversion.service';
 import { multerOptions } from './multer.config';
 import type { ConvertRequestBody } from './tuning.parser';
@@ -21,8 +19,6 @@ import { parseTuningOptions } from './tuning.parser';
 
 @Controller()
 export class ConversionController {
-  private readonly logger = new Logger(ConversionController.name);
-
   constructor(private readonly conversionService: ConversionService) {}
 
   @Get('formats')
@@ -57,25 +53,12 @@ export class ConversionController {
   }
 
   @Get('download/:id')
-  download(@Param('id') id: string, @Res() res: Response) {
-    const { path, ext } = this.conversionService.getOutputForDownload(id);
-
+  async download(@Param('id') id: string, @Res() res: Response) {
+    const { ext, pipeTo } = await this.conversionService.openDownload(id);
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="converted.${ext}"`,
     );
-    const stream = createReadStream(path);
-    stream.on('error', (err) => {
-      this.logger.warn(`下載讀取失敗 (${id}): ${err.message}`);
-      if (!res.headersSent) {
-        res.status(500).end();
-      } else {
-        res.destroy(err);
-      }
-    });
-    res.on('finish', () => {
-      void this.conversionService.releaseOutput(id);
-    });
-    stream.pipe(res);
+    pipeTo(res);
   }
 }
