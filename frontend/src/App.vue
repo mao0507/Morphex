@@ -201,7 +201,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  for (const entry of queue.value) conversionQueue.stop(entry)
+  for (const entry of queue.value) {
+    conversionQueue.stop(entry)
+    if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
+  }
   gsapCtx?.revert()
 })
 
@@ -218,7 +221,8 @@ function makeEntry(file, formatId) {
   return {
     localId: `f${localIdCounter}`,
     file,
-    previewUrl: URL.createObjectURL(file),
+    // 只有圖片/影片會顯示縮圖，音訊不建 blob URL
+    previewUrl: file.type.startsWith('image/') || file.type.startsWith('video/') ? URL.createObjectURL(file) : null,
     name: file.name,
     sizeLabel: formatBytes(file.size),
     format: formatId,
@@ -347,7 +351,7 @@ function applyTuningToAll(entry) {
 
 function removeEntry(entry) {
   conversionQueue.stop(entry)
-  URL.revokeObjectURL(entry.previewUrl)
+  if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
   queue.value = queue.value.filter((e) => e.localId !== entry.localId)
 }
 
