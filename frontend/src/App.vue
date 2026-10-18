@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { gsap } from 'gsap'
 import { SUPPORTED_LOCALES, setLocale } from './i18n'
 import { createConversionQueue, DOWNLOAD_EXPIRED } from './conversion-queue'
+import { acceptsFile } from './file-intake'
 
 const { t, locale } = useI18n()
 
@@ -103,7 +104,7 @@ let rejectionTimer = null
 const videoFormats = computed(() => formats.value.filter((f) => f.kind === 'video'))
 const audioFormats = computed(() => formats.value.filter((f) => f.kind === 'audio'))
 const imageFormats = computed(() => formats.value.filter((f) => f.kind === 'image'))
-const visibleQueue = computed(() => queue.value.filter((e) => entryTabKind(e) === activeTab.value))
+const visibleQueue = computed(() => queue.value.filter((e) => e.kind === activeTab.value))
 const hasIdleOrError = computed(() => visibleQueue.value.some((e) => e.status === 'idle' || e.status === 'error'))
 const hasDone = computed(() => visibleQueue.value.some((e) => e.status === 'done'))
 const doneCount = computed(() => visibleQueue.value.filter((e) => e.status === 'done' || e.status === 'downloaded').length)
@@ -153,16 +154,17 @@ function extOf(entry) {
   return parts.length > 1 ? parts.pop().toUpperCase() : ''
 }
 
-function isVideoEntry(entry) {
-  return entry.file.type.startsWith('video/')
-}
-
+// 分頁歸屬在加入時就決定（entry.kind），不再用 MIME 重猜：空 MIME 的圖片、
+// 放進影音分頁的 GIF 都會留在原本的分頁、用對應的設定面板
 function isImageEntry(entry) {
-  return entry.file.type.startsWith('image/')
+  return entry.kind === 'image'
 }
 
-function entryTabKind(entry) {
-  return isImageEntry(entry) ? 'image' : 'video'
+// 縮圖只看瀏覽器能不能直接顯示：影音分頁的 GIF 也用 <img> 預覽
+function thumbKind(file, kind) {
+  if (kind === 'image' || file.type.startsWith('image/')) return 'image'
+  if (file.type.startsWith('video/')) return 'video'
+  return 'audio'
 }
 
 onMounted(async () => {
@@ -216,13 +218,16 @@ function onCardLeave(el, done) {
   gsap.to(el, { x: 24, autoAlpha: 0, duration: 0.28, ease: 'power1.in', onComplete: done })
 }
 
-function makeEntry(file, formatId) {
+function makeEntry(file, formatId, kind) {
   localIdCounter += 1
+  const thumb = thumbKind(file, kind)
   return {
     localId: `f${localIdCounter}`,
     file,
+    kind,
+    thumb,
     // 只有圖片/影片會顯示縮圖，音訊不建 blob URL
-    previewUrl: file.type.startsWith('image/') || file.type.startsWith('video/') ? URL.createObjectURL(file) : null,
+    previewUrl: thumb === 'audio' ? null : URL.createObjectURL(file),
     name: file.name,
     sizeLabel: formatBytes(file.size),
     format: formatId,
@@ -262,32 +267,13 @@ function makeEntry(file, formatId) {
   }
 }
 
-function fileExtension(name) {
-  const idx = name.lastIndexOf('.')
-  return idx === -1 ? '' : name.slice(idx + 1).toLowerCase()
-}
-
-// 分頁只是前端的第一道防線（accept 屬性 + 這裡的 mimetype 過濾），真正的
-// 圖片/影音判定以後端 sharp/ffprobe 探測結果為準，避免副檔名造假繞過。
-// 部分格式（mkv/wma/3gp...）瀏覽器的 File.type 會回傳空字串，這時退而
-// 用副檔名比對後端 /formats 回傳的支援清單，避免合法檔案被誤擋。
 function addFiles(fileList) {
-  const isImageTab = activeTab.value === 'image'
-  const acceptedKinds = isImageTab ? ['image'] : ['video', 'audio']
-  const knownExts = new Set(
-    formats.value.filter((f) => acceptedKinds.includes(f.kind)).map((f) => f.ext.toLowerCase())
-  )
-  const predicate = (file) => {
-    if (isImageTab ? file.type.startsWith('image/') : file.type.startsWith('video/') || file.type.startsWith('audio/')) {
-      return true
-    }
-    return knownExts.has(fileExtension(file.name))
-  }
-
+  const tab = activeTab.value
+  const isImageTab = tab === 'image'
   const all = Array.from(fileList)
-  const accepted = all.filter(predicate)
+  const accepted = all.filter((file) => acceptsFile(file, tab, formats.value))
   const initialFormat = isImageTab ? defaultImageFormat.value : defaultFormat.value
-  queue.value.push(...accepted.map((file) => makeEntry(file, initialFormat)))
+  queue.value.push(...accepted.map((file) => makeEntry(file, initialFormat, tab)))
 
   if (accepted.length < all.length) {
     rejectionNotice.value = isImageTab ? t('notice.skippedNonImage') : t('notice.skippedNonMedia')
@@ -344,7 +330,7 @@ function applyTuningToAll(entry) {
   // 只套用到同一種類型的檔案，避免把不相干的設定塞進另一分頁的檔案
   for (const other of queue.value) {
     if (other.localId === entry.localId) continue
-    if (entryTabKind(other) !== entryTabKind(entry)) continue
+    if (other.kind !== entry.kind) continue
     other.tuning = { ...entry.tuning }
   }
 }
@@ -543,11 +529,11 @@ function downloadAll() {
           <div class="queue-row">
             <div
               class="thumb"
-              :class="isImageEntry(entry) ? 'thumb-image' : isVideoEntry(entry) ? 'thumb-video' : 'thumb-audio'"
+              :class="`thumb-${entry.thumb}`"
             >
-              <img v-if="isImageEntry(entry)" class="thumb-image-el" :src="entry.previewUrl" alt="" />
+              <img v-if="entry.thumb === 'image'" class="thumb-image-el" :src="entry.previewUrl" alt="" />
               <video
-                v-else-if="isVideoEntry(entry)"
+                v-else-if="entry.thumb === 'video'"
                 class="thumb-video-el"
                 :src="entry.previewUrl"
                 muted
