@@ -130,6 +130,17 @@ export const FORMATS: FormatDefinition[] = [
     mimeTypes: ['video/ogg'],
   },
   {
+    // DVD 相容的 MPEG-PS；mpeg2video 不吃 -crf，畫質由 ffmpeg-args 的 -q:v 控制
+    id: 'mpg',
+    label: 'MPG (MPEG-2 / MP2)',
+    ext: 'mpg',
+    kind: 'video',
+    videoCodec: 'mpeg2video',
+    audioCodec: 'mp2',
+    extraArgs: ['-pix_fmt', 'yuv420p'],
+    mimeTypes: ['video/mpeg'],
+  },
+  {
     id: 'gif',
     label: 'GIF 動圖',
     ext: 'gif',
@@ -170,6 +181,17 @@ export const FORMATS: FormatDefinition[] = [
     mimeTypes: ['audio/aiff', 'audio/x-aiff'],
   },
   {
+    // AMR-NB 規格只有 8kHz 單聲道、最高 12.2kbps
+    id: 'amr',
+    label: 'AMR (AMR-NB)',
+    ext: 'amr',
+    kind: 'audio',
+    audioCodec: 'libopencore_amrnb',
+    extraArgs: ['-ar', '8000', '-ac', '1', '-b:a', '12.2k'],
+    fixedTuning: ['sampleRateHz', 'audioChannels', 'audioBitrateKbps'],
+    mimeTypes: ['audio/amr'],
+  },
+  {
     id: 'jpg',
     label: 'JPEG',
     ext: 'jpg',
@@ -208,6 +230,21 @@ export const FORMATS: FormatDefinition[] = [
     kind: 'image',
     mimeTypes: ['image/avif'],
     sharpFormat: 'avif',
+  },
+  // sharp 寫不出 BMP/ICO：沒有 sharpFormat，由 image-convert.ts 用 sharp 解碼後自己編碼
+  {
+    id: 'bmp',
+    label: 'BMP',
+    ext: 'bmp',
+    kind: 'image',
+    mimeTypes: ['image/bmp'],
+  },
+  {
+    id: 'ico',
+    label: 'ICO',
+    ext: 'ico',
+    kind: 'image',
+    mimeTypes: ['image/x-icon', 'image/vnd.microsoft.icon'],
   },
 ];
 

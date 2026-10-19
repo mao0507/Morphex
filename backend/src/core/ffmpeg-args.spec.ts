@@ -159,6 +159,16 @@ describe('buildFfmpegArgs', () => {
       '/tmp/out.flac',
     ]);
   });
+
+  it('mpg 沒指定位元率時用固定品質 -q:v，指定了就只用 -b:v', () => {
+    const mpg = getFormatById('mpg')!;
+    const build = (tuning = {}) =>
+      buildFfmpegArgs('/tmp/in.mp4', '/tmp/out.mpg', 'video', mpg, tuning);
+    expect(build().join(' ')).toContain('-q:v 3');
+    const withBitrate = build({ videoBitrateKbps: 4000 }).join(' ');
+    expect(withBitrate).toContain('-b:v 4000k');
+    expect(withBitrate).not.toContain('-q:v');
+  });
 });
 
 describe('expectedOutputDurationSec', () => {

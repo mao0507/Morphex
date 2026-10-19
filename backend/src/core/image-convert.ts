@@ -1,4 +1,6 @@
+import { writeFile } from 'fs/promises';
 import sharp from 'sharp';
+import { encodeBmp, encodeIco } from './bitmap-encoders';
 import { ConversionError } from './errors';
 import { FORMATS } from './formats';
 import { ConvertTuning, FormatDefinition } from './types';
@@ -43,12 +45,48 @@ export async function tryReadImageMetadata(
   }
 }
 
+const ICO_SIZES = [16, 32, 48, 256];
+
+// sharp 寫不出的圖片格式：sharp 只負責解碼與縮放，最後的容器由 bitmap-encoders 組
+const CUSTOM_ENCODERS: Record<string, (image: sharp.Sharp) => Promise<Buffer>> =
+  {
+    // 跟 JPG 一樣沒有透明：透明處補白，固定 24-bit
+    bmp: async (image) => {
+      const { data, info } = await image
+        .flatten({ background: '#ffffff' })
+        .toColourspace('srgb')
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      return encodeBmp(data, info.width, info.height);
+    },
+    // 固定包四種尺寸讓系統挑最接近的；非正方形等比縮放後補透明邊
+    ico: async (image) =>
+      encodeIco(
+        await Promise.all(
+          ICO_SIZES.map(async (size) => ({
+            size,
+            png: await image
+              .clone()
+              .resize(size, size, {
+                fit: 'contain',
+                background: { r: 0, g: 0, b: 0, alpha: 0 },
+              })
+              .ensureAlpha()
+              .png()
+              .toBuffer(),
+          })),
+        ),
+      ),
+  };
+
 export async function runSharpJob(
   plan: SharpConversionPlan,
   onProgress?: (percent: number) => void,
 ): Promise<void> {
   const sharpFormat = plan.targetFormat.sharpFormat as keyof sharp.FormatEnum;
-  if (!sharpFormat) {
+  const customEncoder = CUSTOM_ENCODERS[plan.targetFormat.id];
+  if (!sharpFormat && !customEncoder) {
     throw new ConversionError(
       'INVALID_INPUT',
       `不支援的圖片格式：${plan.targetFormat.id}`,
@@ -72,6 +110,12 @@ export async function runSharpJob(
     // 這裡要主動呼叫 withMetadata() 蓋掉，沒勾才會變成「保留」
     if (!plan.tuning.stripMetadata) {
       pipeline = pipeline.withMetadata();
+    }
+
+    if (customEncoder) {
+      await writeFile(plan.outputPath, await customEncoder(pipeline));
+      onProgress?.(100);
+      return;
     }
 
     const quality = plan.tuning.quality;

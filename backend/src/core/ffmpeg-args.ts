@@ -34,6 +34,9 @@ const ROTATE_FILTER: Record<90 | 180 | 270, string> = {
 // -crf / -preset 是個別編碼器的私有選項，傳給不支援的編碼器會讓 ffmpeg 直接報錯退出
 const CRF_CODECS = new Set(['libx264', 'libx265', 'libvpx-vp9', 'libaom-av1']);
 const PRESET_CODECS = new Set(['libx264', 'libx265']);
+// 這些編碼器沒指定位元率時預設只有 200kbps，畫面會糊；改用固定品質 -q:v（2–31，越小越好）
+const QSCALE_CODECS = new Set(['mpeg2video']);
+const DEFAULT_QSCALE = '3';
 
 export function validateCombination(
   inputKind: MediaKind,
@@ -95,6 +98,14 @@ export function buildFfmpegArgs(
   tuning: ConvertTuning = {},
 ): string[] {
   validateCombination(inputKind, targetFormat);
+  for (const field of targetFormat.fixedTuning ?? []) {
+    if (tuning[field] !== undefined) {
+      throw new ConversionError(
+        'INVALID_INPUT',
+        `${targetFormat.id} 不能調整：${field}`,
+      );
+    }
+  }
 
   const args = ['-y'];
 
@@ -150,6 +161,8 @@ export function buildFfmpegArgs(
     }
     if (tuning.videoBitrateKbps) {
       args.push('-b:v', `${tuning.videoBitrateKbps}k`);
+    } else if (videoCodec && QSCALE_CODECS.has(videoCodec)) {
+      args.push('-q:v', DEFAULT_QSCALE);
     }
     if (tuning.crf !== undefined && videoCodec && CRF_CODECS.has(videoCodec)) {
       args.push('-crf', String(tuning.crf));
