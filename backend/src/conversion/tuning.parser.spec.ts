@@ -1,5 +1,9 @@
 import { ConversionError } from '../core/errors';
-import { ConvertRequestBody, parseConvertRequest } from './tuning.parser';
+import {
+  ConvertRequestBody,
+  parseConvertRequest,
+  REQUEST_FIELD_BY_TUNING_KEY,
+} from './tuning.parser';
 
 const tuningOf = (body: ConvertRequestBody) => parseConvertRequest(body).tuning;
 
@@ -36,6 +40,8 @@ describe('parseConvertRequest', () => {
   ])('%s=%s → %s', (field, value, key, expected) => {
     const tuning = tuningOf({ [field]: value });
     expect(tuning[key as keyof typeof tuning]).toEqual(expected);
+    // 反向對照表（/formats 用）要跟解析一致
+    expect(REQUEST_FIELD_BY_TUNING_KEY[key as keyof typeof tuning]).toBe(field);
   });
 
   it.each<[keyof ConvertRequestBody, unknown]>([

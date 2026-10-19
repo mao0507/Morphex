@@ -130,11 +130,14 @@ describe('補充格式 (整合測試，實際呼叫 sharp/ffmpeg/ffprobe)', () =
   }, 30_000);
 
   it.each([
-    ['sampleRateHz', { sampleRateHz: 44100 }],
-    ['audioChannels', { audioChannels: 2 }],
-    ['audioBitrateKbps', { audioBitrateKbps: 128 }],
-  ])('amr 搭配 %s：INVALID_INPUT', async (field, tuning) => {
-    await expect(convert('tone.wav', 'amr', tuning)).rejects.toMatchObject({
+    ['tone.wav', 'amr', 'sampleRateHz', { sampleRateHz: 44100 }],
+    ['tone.wav', 'amr', 'audioChannels', { audioChannels: 2 }],
+    ['tone.wav', 'amr', 'audioBitrateKbps', { audioBitrateKbps: 128 }],
+    ['clip.mp4', 'mpg', 'crf', { crf: 20 }],
+    ['half.png', 'bmp', 'quality', { quality: 80 }],
+    ['half.png', 'ico', 'resolution', { resolution: '64x64' }],
+  ])('%s → %s 搭配 %s：INVALID_INPUT', async (input, target, field, tuning) => {
+    await expect(convert(input, target, tuning)).rejects.toMatchObject({
       code: 'INVALID_INPUT',
       message: expect.stringContaining(field) as string,
     });

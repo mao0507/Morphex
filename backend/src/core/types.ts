@@ -12,8 +12,9 @@ export interface FormatDefinition {
   // 圖片格式專用：對應 sharp 的 toFormat() 名稱（多數跟 id 同名，jpg 例外是 'jpeg'）。
   // image-convert.ts 用這個欄位衍生正查/反查表，FORMATS 是唯一要維護的清單
   sharpFormat?: string;
-  // 格式本身寫死、使用者不能調的 tuning 欄位（例如 AMR 的取樣率）；有給就回 INVALID_INPUT
-  fixedTuning?: (keyof ConvertTuning)[];
+  // 這個格式不吃的 tuning 欄位（被格式寫死或編碼器不支援）。送了就回 INVALID_INPUT，
+  // /formats 也帶給前端隱藏——哪個格式能調什麼只在這裡定義一次
+  unsupportedTuning?: (keyof ConvertTuning)[];
 }
 
 export type VideoCodecChoice = 'h264' | 'h265' | 'vp9' | 'av1' | 'mpeg4' | 'copy';

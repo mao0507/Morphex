@@ -1,4 +1,5 @@
-import { FormatDefinition } from './types';
+import { ConversionError } from './errors';
+import { ConvertTuning, FormatDefinition } from './types';
 
 export const FORMATS: FormatDefinition[] = [
   {
@@ -138,6 +139,7 @@ export const FORMATS: FormatDefinition[] = [
     videoCodec: 'mpeg2video',
     audioCodec: 'mp2',
     extraArgs: ['-pix_fmt', 'yuv420p'],
+    unsupportedTuning: ['crf', 'preset'],
     mimeTypes: ['video/mpeg'],
   },
   {
@@ -188,7 +190,7 @@ export const FORMATS: FormatDefinition[] = [
     kind: 'audio',
     audioCodec: 'libopencore_amrnb',
     extraArgs: ['-ar', '8000', '-ac', '1', '-b:a', '12.2k'],
-    fixedTuning: ['sampleRateHz', 'audioChannels', 'audioBitrateKbps'],
+    unsupportedTuning: ['sampleRateHz', 'audioChannels', 'audioBitrateKbps'],
     mimeTypes: ['audio/amr'],
   },
   {
@@ -238,6 +240,7 @@ export const FORMATS: FormatDefinition[] = [
     ext: 'bmp',
     kind: 'image',
     mimeTypes: ['image/bmp'],
+    unsupportedTuning: ['quality'],
   },
   {
     id: 'ico',
@@ -245,8 +248,24 @@ export const FORMATS: FormatDefinition[] = [
     ext: 'ico',
     kind: 'image',
     mimeTypes: ['image/x-icon', 'image/vnd.microsoft.icon'],
+    // 尺寸固定 16/32/48/256
+    unsupportedTuning: ['quality', 'resolution'],
   },
 ];
+
+export function assertTuningSupported(
+  format: FormatDefinition,
+  tuning: ConvertTuning = {},
+): void {
+  for (const field of format.unsupportedTuning ?? []) {
+    if (tuning[field] !== undefined) {
+      throw new ConversionError(
+        'INVALID_INPUT',
+        `${format.id} 不能調整：${field}`,
+      );
+    }
+  }
+}
 
 export function getFormatById(id: string): FormatDefinition | undefined {
   return FORMATS.find((format) => format.id === id);

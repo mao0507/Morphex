@@ -98,14 +98,6 @@ export function buildFfmpegArgs(
   tuning: ConvertTuning = {},
 ): string[] {
   validateCombination(inputKind, targetFormat);
-  for (const field of targetFormat.fixedTuning ?? []) {
-    if (tuning[field] !== undefined) {
-      throw new ConversionError(
-        'INVALID_INPUT',
-        `${targetFormat.id} 不能調整：${field}`,
-      );
-    }
-  }
 
   const args = ['-y'];
 

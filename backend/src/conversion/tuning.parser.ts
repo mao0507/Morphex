@@ -102,6 +102,34 @@ const oneOf =
 const flag: Parser<boolean> = (raw) =>
   raw === 'true' ? true : raw === 'false' ? false : undefined;
 
+// ConvertTuning 欄位 → multipart 欄位名；/formats 回報不支援的欄位時用前端認得的名字
+export const REQUEST_FIELD_BY_TUNING_KEY: Record<keyof ConvertTuning, Field> = {
+  resolution: 'resolution',
+  frameRateFps: 'frameRate',
+  videoBitrateKbps: 'videoBitrate',
+  audioBitrateKbps: 'audioBitrate',
+  trimStartSec: 'trimStart',
+  trimEndSec: 'trimEnd',
+  normalizeAudio: 'normalizeAudio',
+  stripMetadata: 'stripMetadata',
+  videoCodec: 'videoCodec',
+  audioCodec: 'audioCodec',
+  crf: 'crf',
+  preset: 'preset',
+  audioChannels: 'audioChannels',
+  sampleRateHz: 'sampleRate',
+  rotate: 'rotate',
+  flipHorizontal: 'flipHorizontal',
+  flipVertical: 'flipVertical',
+  speed: 'speed',
+  deinterlace: 'deinterlace',
+  denoise: 'denoise',
+  brightness: 'brightness',
+  contrast: 'contrast',
+  saturation: 'saturation',
+  quality: 'quality',
+};
+
 export function parseConvertRequest(body: ConvertRequestBody): {
   targetFormatId?: string;
   tuning: ConvertTuning;
