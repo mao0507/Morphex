@@ -66,6 +66,19 @@ describe('conversion queue', () => {
     expect(sent).not.toHaveProperty('denoise')
   })
 
+  it('目標格式用不到的欄位不送（例如 AMR 的取樣率）', async () => {
+    const fetch = fakeBackend({ '/convert': json(202, { id: 'j1', status: 'processing', progress: 0 }) })
+    const queue = createConversionQueue({ fetch, apiBase: API, saveBlob: vi.fn() })
+    const entry = { ...makeEntry(), format: 'amr', tuning: { sampleRate: '44100', normalizeAudio: true } }
+
+    await queue.start(entry)
+    queue.stop(entry)
+
+    const sent = Object.fromEntries(fetch.mock.calls[0][1].body.entries())
+    expect(sent).toMatchObject({ format: 'amr', normalizeAudio: 'true' })
+    expect(sent).not.toHaveProperty('sampleRate')
+  })
+
   it('輪詢不重疊，停止後晚到的回應不改狀態', async () => {
     const slow = deferred()
     const fetch = fakeBackend({

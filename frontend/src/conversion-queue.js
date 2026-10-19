@@ -2,6 +2,8 @@
 // entry 的 status/progress/jobId/downloadUrl/errorCode 只由這裡改寫，App.vue 只讀。
 // 狀態：idle → queued → processing → done → downloaded，任一步失敗 → error（可重新 start）
 
+import { isFieldHidden } from './format-fields'
+
 export const POLL_INTERVAL_MS = 800
 
 // 前端自己產生的錯誤碼；後端的錯誤碼（INVALID_INPUT 等）原樣透傳，null 代表無法分類
@@ -15,6 +17,7 @@ function buildFormData(entry) {
   if (!entry.compressMode) formData.append('format', entry.format)
   for (const [key, value] of Object.entries(entry.tuning)) {
     if (value === '' || value === false || value == null) continue
+    if (isFieldHidden(entry.format, key)) continue
     formData.append(key, value === true ? 'true' : String(value))
   }
   return formData

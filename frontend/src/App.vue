@@ -5,6 +5,7 @@ import { gsap } from 'gsap'
 import { SUPPORTED_LOCALES, setLocale } from './i18n'
 import { createConversionQueue, DOWNLOAD_EXPIRED } from './conversion-queue'
 import { acceptsFile } from './file-intake'
+import { isFieldHidden } from './format-fields'
 
 const { t, locale } = useI18n()
 
@@ -622,7 +623,7 @@ function downloadAll() {
 
           <div class="settings-panel" v-if="entry.settingsOpen && isImageEntry(entry)">
             <div class="settings-grid">
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'resolution')">
                 <span class="settings-label">{{ t('settings.scale') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.resolution">
@@ -631,7 +632,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'quality')">
                 <span class="settings-label">{{ t('settings.qualityRange') }}</span>
                 <input class="settings-input" type="number" min="1" max="100" :placeholder="t('presets.auto')" v-model="entry.tuning.quality" />
               </label>
@@ -680,7 +681,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'audioBitrate')">
                 <span class="settings-label">{{ t('settings.audioBitrate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.audioBitrate">
@@ -722,7 +723,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'preset')">
                 <span class="settings-label">{{ t('settings.encodeSpeed') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.preset">
@@ -732,11 +733,11 @@ function downloadAll() {
                 </div>
               </label>
 
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'crf')">
                 <span class="settings-label">{{ t('settings.crf') }}</span>
                 <input class="settings-input" type="number" min="0" max="51" :placeholder="t('presets.auto')" v-model="entry.tuning.crf" />
               </label>
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'sampleRate')">
                 <span class="settings-label">{{ t('settings.sampleRate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.sampleRate">
@@ -745,7 +746,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'audioChannels')">
                 <span class="settings-label">{{ t('settings.channels') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.audioChannels">
