@@ -3,6 +3,8 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { gsap } from 'gsap'
 import { SUPPORTED_LOCALES, setLocale } from './i18n'
+import { createConversionQueue, DOWNLOAD_EXPIRED } from './conversion-queue'
+import { acceptsFile } from './file-intake'
 
 const { t, locale } = useI18n()
 
@@ -84,14 +86,6 @@ const ROTATE_PRESETS = computed(() => [
   { value: '270', label: '270°' },
 ])
 
-const STATUS_LABEL = computed(() => ({
-  idle: t('status.idle'),
-  queued: t('status.queued'),
-  processing: t('status.processing'),
-  done: t('status.done'),
-  error: t('status.error'),
-}))
-
 const formats = ref([])
 const queue = ref([])
 const defaultFormat = ref('')
@@ -110,10 +104,10 @@ let rejectionTimer = null
 const videoFormats = computed(() => formats.value.filter((f) => f.kind === 'video'))
 const audioFormats = computed(() => formats.value.filter((f) => f.kind === 'audio'))
 const imageFormats = computed(() => formats.value.filter((f) => f.kind === 'image'))
-const visibleQueue = computed(() => queue.value.filter((e) => entryTabKind(e) === activeTab.value))
+const visibleQueue = computed(() => queue.value.filter((e) => e.kind === activeTab.value))
 const hasIdleOrError = computed(() => visibleQueue.value.some((e) => e.status === 'idle' || e.status === 'error'))
 const hasDone = computed(() => visibleQueue.value.some((e) => e.status === 'done'))
-const doneCount = computed(() => visibleQueue.value.filter((e) => e.status === 'done').length)
+const doneCount = computed(() => visibleQueue.value.filter((e) => e.status === 'done' || e.status === 'downloaded').length)
 const processingCount = computed(() => visibleQueue.value.filter((e) => e.status === 'processing' || e.status === 'queued').length)
 const idleCount = computed(() => visibleQueue.value.filter((e) => e.status === 'idle').length)
 const errorCount = computed(() => visibleQueue.value.filter((e) => e.status === 'error').length)
@@ -160,16 +154,17 @@ function extOf(entry) {
   return parts.length > 1 ? parts.pop().toUpperCase() : ''
 }
 
-function isVideoEntry(entry) {
-  return entry.file.type.startsWith('video/')
-}
-
+// 分頁歸屬在加入時就決定（entry.kind），不再用 MIME 重猜：空 MIME 的圖片、
+// 放進影音分頁的 GIF 都會留在原本的分頁、用對應的設定面板
 function isImageEntry(entry) {
-  return entry.file.type.startsWith('image/')
+  return entry.kind === 'image'
 }
 
-function entryTabKind(entry) {
-  return isImageEntry(entry) ? 'image' : 'video'
+// 縮圖只看瀏覽器能不能直接顯示：影音分頁的 GIF 也用圖片元素預覽
+function thumbKind(file, kind) {
+  if (kind === 'image' || file.type.startsWith('image/')) return 'image'
+  if (file.type.startsWith('video/')) return 'video'
+  return 'audio'
 }
 
 onMounted(async () => {
@@ -208,7 +203,10 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  for (const entry of queue.value) stopPolling(entry)
+  for (const entry of queue.value) {
+    conversionQueue.stop(entry)
+    if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
+  }
   gsapCtx?.revert()
 })
 
@@ -220,12 +218,16 @@ function onCardLeave(el, done) {
   gsap.to(el, { x: 24, autoAlpha: 0, duration: 0.28, ease: 'power1.in', onComplete: done })
 }
 
-function makeEntry(file, formatId) {
+function makeEntry(file, formatId, kind) {
   localIdCounter += 1
+  const thumb = thumbKind(file, kind)
   return {
     localId: `f${localIdCounter}`,
     file,
-    previewUrl: URL.createObjectURL(file),
+    kind,
+    thumb,
+    // 只有圖片/影片會顯示縮圖，音訊不建 blob URL
+    previewUrl: thumb === 'audio' ? null : URL.createObjectURL(file),
     name: file.name,
     sizeLabel: formatBytes(file.size),
     format: formatId,
@@ -261,37 +263,17 @@ function makeEntry(file, formatId) {
     progress: 0,
     jobId: null,
     downloadUrl: null,
-    errorMessage: '',
-    pollTimerId: null,
+    errorCode: null,
   }
 }
 
-function fileExtension(name) {
-  const idx = name.lastIndexOf('.')
-  return idx === -1 ? '' : name.slice(idx + 1).toLowerCase()
-}
-
-// 分頁只是前端的第一道防線（accept 屬性 + 這裡的 mimetype 過濾），真正的
-// 圖片/影音判定以後端 sharp/ffprobe 探測結果為準，避免副檔名造假繞過。
-// 部分格式（mkv/wma/3gp...）瀏覽器的 File.type 會回傳空字串，這時退而
-// 用副檔名比對後端 /formats 回傳的支援清單，避免合法檔案被誤擋。
 function addFiles(fileList) {
-  const isImageTab = activeTab.value === 'image'
-  const acceptedKinds = isImageTab ? ['image'] : ['video', 'audio']
-  const knownExts = new Set(
-    formats.value.filter((f) => acceptedKinds.includes(f.kind)).map((f) => f.ext.toLowerCase())
-  )
-  const predicate = (file) => {
-    if (isImageTab ? file.type.startsWith('image/') : file.type.startsWith('video/') || file.type.startsWith('audio/')) {
-      return true
-    }
-    return knownExts.has(fileExtension(file.name))
-  }
-
+  const tab = activeTab.value
+  const isImageTab = tab === 'image'
   const all = Array.from(fileList)
-  const accepted = all.filter(predicate)
+  const accepted = all.filter((file) => acceptsFile(file, tab, formats.value))
   const initialFormat = isImageTab ? defaultImageFormat.value : defaultFormat.value
-  queue.value.push(...accepted.map((file) => makeEntry(file, initialFormat)))
+  queue.value.push(...accepted.map((file) => makeEntry(file, initialFormat, tab)))
 
   if (accepted.length < all.length) {
     rejectionNotice.value = isImageTab ? t('notice.skippedNonImage') : t('notice.skippedNonMedia')
@@ -348,154 +330,51 @@ function applyTuningToAll(entry) {
   // 只套用到同一種類型的檔案，避免把不相干的設定塞進另一分頁的檔案
   for (const other of queue.value) {
     if (other.localId === entry.localId) continue
-    if (entryTabKind(other) !== entryTabKind(entry)) continue
+    if (other.kind !== entry.kind) continue
     other.tuning = { ...entry.tuning }
   }
 }
 
 function removeEntry(entry) {
-  stopPolling(entry)
-  URL.revokeObjectURL(entry.previewUrl)
+  conversionQueue.stop(entry)
+  if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
   queue.value = queue.value.filter((e) => e.localId !== entry.localId)
-}
-
-function stopPolling(entry) {
-  if (entry.pollTimerId) {
-    clearInterval(entry.pollTimerId)
-    entry.pollTimerId = null
-  }
 }
 
 const KNOWN_ERROR_CODES = ['INVALID_INPUT', 'UNSUPPORTED_COMBINATION', 'PROBE_FAILED', 'FFMPEG_FAILED', 'TIMEOUT', 'IMAGE_CONVERT_FAILED']
 
 // 只翻通用錯誤分類，不翻後端回傳的技術細節——那些是給除錯用的固定字串
 function errorLabel(code) {
+  if (code === DOWNLOAD_EXPIRED) return t('errors.downloadExpired')
   return KNOWN_ERROR_CODES.includes(code) ? t(`errors.code.${code}`) : t('errors.generic')
 }
 
-function markEntryError(entry, message) {
-  entry.status = 'error'
-  entry.errorMessage = message
+function saveBlob(blob, filename) {
+  const blobUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(blobUrl)
 }
 
-function markEntryDone(entry, downloadUrl) {
-  entry.status = 'done'
-  entry.progress = 100
-  entry.downloadUrl = downloadUrl
+function pulseCard(entry) {
+  const card = document.querySelector(`[data-local-id="${entry.localId}"]`)
+  if (card) gsap.fromTo(card, { scale: 1 }, { scale: 1.015, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' })
 }
 
-function buildFormData(entry) {
-  const formData = new FormData()
-  formData.append('file', entry.file)
-  if (!entry.compressMode) formData.append('format', entry.format)
-  const t = entry.tuning
-  if (t.resolution) formData.append('resolution', t.resolution)
-  if (t.frameRate) formData.append('frameRate', t.frameRate)
-  if (t.videoBitrate) formData.append('videoBitrate', t.videoBitrate)
-  if (t.audioBitrate) formData.append('audioBitrate', t.audioBitrate)
-  if (t.trimStart) formData.append('trimStart', t.trimStart)
-  if (t.trimEnd) formData.append('trimEnd', t.trimEnd)
-  if (t.normalizeAudio) formData.append('normalizeAudio', 'true')
-  if (t.stripMetadata) formData.append('stripMetadata', 'true')
-  if (t.videoCodec) formData.append('videoCodec', t.videoCodec)
-  if (t.audioCodec) formData.append('audioCodec', t.audioCodec)
-  if (t.crf) formData.append('crf', t.crf)
-  if (t.preset) formData.append('preset', t.preset)
-  if (t.audioChannels) formData.append('audioChannels', t.audioChannels)
-  if (t.sampleRate) formData.append('sampleRate', t.sampleRate)
-  if (t.rotate) formData.append('rotate', t.rotate)
-  if (t.flipHorizontal) formData.append('flipHorizontal', 'true')
-  if (t.flipVertical) formData.append('flipVertical', 'true')
-  if (t.speed) formData.append('speed', t.speed)
-  if (t.deinterlace) formData.append('deinterlace', 'true')
-  if (t.denoise) formData.append('denoise', 'true')
-  if (t.brightness) formData.append('brightness', t.brightness)
-  if (t.contrast) formData.append('contrast', t.contrast)
-  if (t.saturation) formData.append('saturation', t.saturation)
-  if (t.quality) formData.append('quality', t.quality)
-  return formData
-}
-
-async function startConversion(entry) {
-  stopPolling(entry)
-  entry.status = 'queued'
-  entry.progress = 0
-  entry.errorMessage = ''
-  entry.downloadUrl = null
-
-  try {
-    const res = await fetch(`${API_BASE}/convert`, {
-      method: 'POST',
-      body: buildFormData(entry),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error()
-
-    entry.jobId = data.id
-    entry.status = 'processing'
-    entry.progress = data.progress ?? 0
-    pollStatus(entry)
-  } catch {
-    markEntryError(entry, t('errors.generic'))
-  }
-}
-
-function pollStatus(entry) {
-  entry.pollTimerId = setInterval(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/convert/${entry.jobId}/status`)
-      const data = await res.json()
-      if (!res.ok) throw new Error()
-
-      entry.progress = data.progress ?? entry.progress
-
-      if (data.status === 'done') {
-        stopPolling(entry)
-        markEntryDone(entry, `${API_BASE}${data.downloadUrl}`)
-        const card = document.querySelector(`[data-local-id="${entry.localId}"]`)
-        if (card) gsap.fromTo(card, { scale: 1 }, { scale: 1.015, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' })
-      } else if (data.status === 'error') {
-        stopPolling(entry)
-        markEntryError(entry, errorLabel(data.error?.code))
-      }
-    } catch {
-      stopPolling(entry)
-      markEntryError(entry, t('errors.generic'))
-    }
-  }, 800)
-}
+const conversionQueue = createConversionQueue({ fetch, apiBase: API_BASE, saveBlob, onDone: pulseCard })
 
 function convertAll() {
   for (const entry of visibleQueue.value) {
-    if (entry.status === 'idle' || entry.status === 'error') startConversion(entry)
-  }
-}
-
-async function triggerDownload(entry) {
-  if (!entry.downloadUrl) return
-  try {
-    const res = await fetch(entry.downloadUrl)
-    if (!res.ok) throw new Error()
-    const blob = await res.blob()
-    const disposition = res.headers.get('Content-Disposition') || ''
-    const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'converted'
-    const blobUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = blobUrl
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(blobUrl)
-  } catch {
-    markEntryError(entry, t('errors.downloadExpired'))
+    if (entry.status === 'idle' || entry.status === 'error') conversionQueue.start(entry)
   }
 }
 
 function downloadAll() {
-  for (const entry of visibleQueue.value) {
-    if (entry.status === 'done' && entry.downloadUrl) triggerDownload(entry)
-  }
+  for (const entry of visibleQueue.value) conversionQueue.download(entry)
 }
 </script>
 
@@ -650,11 +529,11 @@ function downloadAll() {
           <div class="queue-row">
             <div
               class="thumb"
-              :class="isImageEntry(entry) ? 'thumb-image' : isVideoEntry(entry) ? 'thumb-video' : 'thumb-audio'"
+              :class="`thumb-${entry.thumb}`"
             >
-              <img v-if="isImageEntry(entry)" class="thumb-image-el" :src="entry.previewUrl" alt="" />
+              <img v-if="entry.thumb === 'image'" class="thumb-image-el" :src="entry.previewUrl" alt="" />
               <video
-                v-else-if="isVideoEntry(entry)"
+                v-else-if="entry.thumb === 'video'"
                 class="thumb-video-el"
                 :src="entry.previewUrl"
                 muted
@@ -704,7 +583,10 @@ function downloadAll() {
             <div class="status-zone">
               <template v-if="entry.status === 'done'">
                 <span class="status-chip status-chip-done">✓ {{ t('status.done') }}</span>
-                <button class="btn-solid" type="button" @click="triggerDownload(entry)">↓ {{ t('queue.download') }}</button>
+                <button class="btn-solid" type="button" @click="conversionQueue.download(entry)">↓ {{ t('queue.download') }}</button>
+              </template>
+              <template v-else-if="entry.status === 'downloaded'">
+                <span class="status-chip status-chip-done">✓ {{ t('status.downloaded') }}</span>
               </template>
               <template v-else-if="entry.status === 'processing'">
                 <div class="progress-col">
@@ -721,12 +603,12 @@ function downloadAll() {
                 <span class="status-chip status-chip-queued"><span class="status-dot"></span>{{ t('status.queued') }}</span>
               </template>
               <template v-else-if="entry.status === 'error'">
-                <span class="status-chip status-chip-error">{{ entry.errorMessage || STATUS_LABEL.error }}</span>
-                <button class="btn-solid" type="button" @click="startConversion(entry)">{{ t('queue.retry') }}</button>
+                <span class="status-chip status-chip-error">{{ errorLabel(entry.errorCode) }}</span>
+                <button class="btn-solid" type="button" @click="conversionQueue.start(entry)">{{ t('queue.retry') }}</button>
               </template>
               <template v-else>
                 <span class="status-chip status-chip-idle"><span class="status-dot"></span>{{ t('status.idle') }}</span>
-                <button class="btn-solid" type="button" @click="startConversion(entry)">{{ t('queue.convert') }}</button>
+                <button class="btn-solid" type="button" @click="conversionQueue.start(entry)">{{ t('queue.convert') }}</button>
               </template>
             </div>
 
@@ -810,7 +692,7 @@ function downloadAll() {
 
               <label class="settings-field settings-field-wide">
                 <span class="settings-label">{{ t('settings.videoBitrate') }}</span>
-                <input class="settings-input" type="number" min="0" :placeholder="t('presets.auto')" v-model="entry.tuning.videoBitrate" />
+                <input class="settings-input" type="number" min="1" :placeholder="t('presets.auto')" v-model="entry.tuning.videoBitrate" />
               </label>
 
               <div class="settings-field settings-field-wide">

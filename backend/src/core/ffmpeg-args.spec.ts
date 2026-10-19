@@ -1,4 +1,8 @@
-import { buildFfmpegArgs, validateCombination } from './ffmpeg-args';
+import {
+  buildFfmpegArgs,
+  expectedOutputDurationSec,
+  validateCombination,
+} from './ffmpeg-args';
 import { getFormatById } from './formats';
 import { ConversionError } from './errors';
 
@@ -107,7 +111,8 @@ describe('buildFfmpegArgs', () => {
     ]);
   });
 
-  it('trimStart/trimEnd 轉成 -ss 與 -t', () => {
+  // -t 放在 -i 前面當 input option：限制的是讀取的來源長度，加速時才不會多吃來源
+  it('trimStart/trimEnd 轉成 -i 前面的 -ss 與 -t', () => {
     const mp3 = getFormatById('mp3')!;
     const args = buildFfmpegArgs('/tmp/in.mp4', '/tmp/out.mp3', 'video', mp3, {
       trimStartSec: 5,
@@ -117,10 +122,10 @@ describe('buildFfmpegArgs', () => {
       '-y',
       '-ss',
       '5',
-      '-i',
-      '/tmp/in.mp4',
       '-t',
       '10',
+      '-i',
+      '/tmp/in.mp4',
       '-vn',
       '-c:a',
       'libmp3lame',
@@ -153,5 +158,31 @@ describe('buildFfmpegArgs', () => {
       'loudnorm',
       '/tmp/out.flac',
     ]);
+  });
+});
+
+describe('expectedOutputDurationSec', () => {
+  it.each([
+    ['不裁切', 100, {}, 100],
+    ['只裁起點', 100, { trimStartSec: 30 }, 70],
+    ['只裁終點', 100, { trimEndSec: 40 }, 40],
+    ['終點超過來源長度', 100, { trimStartSec: 90, trimEndSec: 200 }, 10],
+    ['加速', 100, { speed: 2 }, 50],
+    ['裁切 + 加速', 100, { trimStartSec: 5, trimEndSec: 15, speed: 2 }, 5],
+    ['來源長度未知', undefined, { trimStartSec: 5 }, undefined],
+    [
+      '長度未知但有裁切區間',
+      undefined,
+      { trimStartSec: 5, trimEndSec: 15 },
+      10,
+    ],
+  ])('%s', (_label, source, tuning, expected) => {
+    expect(expectedOutputDurationSec(source, tuning)).toBe(expected);
+  });
+
+  it('裁切起點超過來源長度時丟出 INVALID_INPUT', () => {
+    expect(() => expectedOutputDurationSec(30, { trimStartSec: 40 })).toThrow(
+      expect.objectContaining({ code: 'INVALID_INPUT' }),
+    );
   });
 });

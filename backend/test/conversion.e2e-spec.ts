@@ -186,7 +186,8 @@ describe('Conversion API (e2e)', () => {
       .post('/convert')
       .attach('file', sampleAudioPath)
       .field('format', 'mp4')
-      .expect(400);
+      .expect(400)
+      .expect((res) => expect(res.body.code).toBe('UNSUPPORTED_COMBINATION'));
   }, 15_000);
 
   it('非媒體檔（損毀檔案）：回傳 400', async () => {
@@ -194,7 +195,8 @@ describe('Conversion API (e2e)', () => {
       .post('/convert')
       .attach('file', brokenFilePath)
       .field('format', 'mp3')
-      .expect(400);
+      .expect(400)
+      .expect((res) => expect(res.body.code).toBe('PROBE_FAILED'));
   }, 15_000);
 
   it('未知輸出格式：回傳 400', async () => {

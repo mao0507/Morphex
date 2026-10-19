@@ -1,28 +1,55 @@
 import {
   BadRequestException,
   HttpException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
   OnModuleDestroy,
   OnModuleInit,
+  Optional,
   RequestTimeoutException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { rm, stat } from 'fs/promises';
+import { mkdirSync } from 'fs';
+import { open, readdir, rm, stat } from 'fs/promises';
 import { join } from 'path';
+import { pipeline, Writable } from 'stream';
 import { ConversionError } from '../core/errors';
-import {
-  prepareConversion,
-  resolveTargetFormat,
-  runPreparedConversion,
-} from '../core/convert';
-import { ConvertTuning, FormatDefinition } from '../core/types';
+import { ConvertTuning } from '../core/types';
+import { ConvertRequestBody, parseConvertRequest } from './tuning.parser';
 import { FORMATS, getFormatById } from '../core/formats';
-import { ensureStorageDirs, OUTPUTS_DIR, UPLOADS_DIR } from './storage.paths';
+import { coreEngine } from './core-engine';
+import { OUTPUTS_DIR, UPLOADS_DIR } from './storage.paths';
 
 export type JobStatus = 'queued' | 'processing' | 'done' | 'error';
+
+export interface PreparedJob {
+  formatId: string;
+  outputPath: string;
+  run: (onProgress: (percent: number) => void) => Promise<void>;
+}
+
+// Engine seam：prepare 失敗代表輸入/組合不合法（同步回 4xx），run 是背景編碼。
+// 正式環境是 core-engine.ts，測試用假 engine
+export interface ConversionEngine {
+  prepare: (request: {
+    inputPath: string;
+    targetFormatId?: string;
+    tuning?: ConvertTuning;
+    outputPathFor: (ext: string) => string;
+  }) => Promise<PreparedJob>;
+}
+
+export interface ConversionDeps {
+  engine: ConversionEngine;
+  uploadsDir: string;
+  outputsDir: string;
+  now: () => number;
+}
+
+export const CONVERSION_DEPS = Symbol('CONVERSION_DEPS');
 
 interface Job {
   id: string;
@@ -34,19 +61,35 @@ interface Job {
   createdAt: number;
 }
 
-const OUTPUT_TTL_MS = 30 * 60 * 1000; // 暫存輸出檔案最長保留 30 分鐘
+export const JOB_TTL_MS = 30 * 60 * 1000; // 暫存輸出檔案最長保留 30 分鐘
 const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
+// Job 生命週期的唯一 owner：job registry、上傳/輸出暫存檔的刪除時機、
+// 一次性下載、TTL 與孤兒檔清除、錯誤形狀都在這裡。controller 只做 HTTP 轉譯
 @Injectable()
 export class ConversionService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ConversionService.name);
   private readonly jobs = new Map<string, Job>();
+  private readonly deps: ConversionDeps;
   private sweepTimer?: NodeJS.Timeout;
 
+  constructor(
+    @Optional() @Inject(CONVERSION_DEPS) deps: Partial<ConversionDeps> = {},
+  ) {
+    this.deps = {
+      engine: coreEngine,
+      uploadsDir: UPLOADS_DIR,
+      outputsDir: OUTPUTS_DIR,
+      now: Date.now,
+      ...deps,
+    };
+  }
+
   onModuleInit(): void {
-    ensureStorageDirs();
+    mkdirSync(this.deps.uploadsDir, { recursive: true });
+    mkdirSync(this.deps.outputsDir, { recursive: true });
     this.sweepTimer = setInterval(() => {
-      void this.sweepExpiredJobs();
+      void this.sweep();
     }, SWEEP_INTERVAL_MS);
   }
 
@@ -63,31 +106,23 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
     }));
   }
 
-  // 同步完成格式解析、probe 與 ffmpeg 參數組裝（快），失敗就直接回 4xx；
-  // 真正耗時的 ffmpeg 編碼則在背景執行，透過 job 的 progress 供前端輪詢
+  // 同步完成格式解析、probe 與參數組裝（快），失敗就直接回 4xx；
+  // 真正耗時的編碼則在背景執行，透過 job 的 progress 供前端輪詢
+  // 解析 body 也在 try 裡：不合法的參數跟 prepare 失敗一樣，刪掉上傳檔、回 { code, message }
   async convert(
     file: Express.Multer.File,
-    targetFormatId: string | undefined,
-    tuning?: ConvertTuning,
+    body: ConvertRequestBody,
   ): Promise<{ id: string; status: JobStatus; progress: number }> {
     const id = randomUUID();
 
-    let targetFormat: FormatDefinition;
-    let outputPath: string;
-    let prepared: Awaited<ReturnType<typeof prepareConversion>>;
+    let prepared: PreparedJob;
     try {
-      // 有帶 format 就直接查表；沒帶（圖片壓縮模式）則用來源檔案本身的格式
-      // 當目標格式，讀到的 imageMeta 順便帶給 prepareConversion 用，不用重讀一次
-      const resolved = await resolveTargetFormat(file.path, targetFormatId);
-      targetFormat = resolved.targetFormat;
-      outputPath = join(OUTPUTS_DIR, `${id}.${targetFormat.ext}`);
-
-      prepared = await prepareConversion({
+      const { targetFormatId, tuning } = parseConvertRequest(body);
+      prepared = await this.deps.engine.prepare({
         inputPath: file.path,
-        outputPath,
-        targetFormatId: targetFormat.id,
+        targetFormatId,
         tuning,
-        knownImageMeta: resolved.imageMeta,
+        outputPathFor: (ext) => join(this.deps.outputsDir, `${id}.${ext}`),
       });
     } catch (err) {
       await this.removeQuietly(file.path);
@@ -98,12 +133,12 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
       id,
       status: 'processing',
       progress: 0,
-      formatId: targetFormat.id,
-      createdAt: Date.now(),
+      formatId: prepared.formatId,
+      createdAt: this.deps.now(),
     };
     this.jobs.set(id, job);
 
-    void this.runJob(job, prepared, file.path, outputPath);
+    void this.runJob(job, prepared, file.path);
 
     return { id: job.id, status: job.status, progress: job.progress };
   }
@@ -126,42 +161,86 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  getOutputForDownload(id: string): { path: string; ext: string } {
+  // 一次性下載：先打開檔案（失敗就在送 header 前回 404），pipeTo 完整寫完才刪檔、
+  // 移除 job；中途中斷則保留到 TTL，讓 sweep 收拾
+  async openDownload(
+    id: string,
+  ): Promise<{ ext: string; pipeTo: (dest: Writable) => void }> {
     const job = this.jobs.get(id);
-    if (!job || job.status !== 'done' || !job.outputPath) {
+    const handle =
+      job?.status === 'done' && job.outputPath
+        ? await open(job.outputPath).catch(() => null)
+        : null;
+    if (!job || !handle) {
       throw new NotFoundException('找不到轉檔結果，可能已過期或下載連結錯誤');
     }
-    const format = getFormatById(job.formatId);
-    return { path: job.outputPath, ext: format?.ext ?? 'bin' };
+
+    return {
+      ext: getFormatById(job.formatId)?.ext ?? 'bin',
+      pipeTo: (dest) => {
+        const source = handle.createReadStream();
+        pipeline(source, dest, (err) => {
+          if (err) {
+            this.logger.warn(`下載未完成 (${id}): ${err.message}`);
+            return;
+          }
+          // 等 fd 關掉才刪：Windows 上刪除仍開著的檔案，檔案會殘留到 handle 關閉
+          if (source.closed) void this.releaseOutput(id);
+          else source.once('close', () => void this.releaseOutput(id));
+        });
+      },
+    };
   }
 
-  async releaseOutput(id: string): Promise<void> {
+  // 清除過期 job（連同 output）與兩個暫存資料夾裡沒被追蹤、已過期的孤兒檔
+  async sweep(): Promise<void> {
+    const now = this.deps.now();
+    for (const [id, job] of this.jobs.entries()) {
+      if (now - job.createdAt > JOB_TTL_MS) {
+        this.jobs.delete(id);
+        if (job.outputPath) await this.removeQuietly(job.outputPath);
+      }
+    }
+
+    const tracked = new Set(
+      [...this.jobs.values()].map((job) => job.outputPath),
+    );
+    await this.sweepOrphans(this.deps.outputsDir, tracked, now);
+    // 上傳檔案理論上會在 job 結束時立即刪除，殘留且過期的必是 removeQuietly 失敗留下的孤兒
+    await this.sweepOrphans(this.deps.uploadsDir, new Set(), now);
+  }
+
+  private async releaseOutput(id: string): Promise<void> {
     const job = this.jobs.get(id);
     if (!job) return;
     this.jobs.delete(id);
     if (job.outputPath) await this.removeQuietly(job.outputPath);
   }
 
+  // 先清掉 input（成功失敗都不再需要）再更新最終狀態，呼叫端看到 done/error 時暫存檔已收拾好
   private async runJob(
     job: Job,
-    prepared: Awaited<ReturnType<typeof prepareConversion>>,
+    prepared: PreparedJob,
     inputPath: string,
-    outputPath: string,
   ): Promise<void> {
+    let failure: unknown;
     try {
-      await runPreparedConversion(prepared, (percent) => {
+      await prepared.run((percent) => {
         job.progress = percent;
       });
+    } catch (err) {
+      failure = err ?? new Error('轉檔失敗');
+    }
+    await this.removeQuietly(inputPath);
+
+    if (failure) {
+      await this.removeQuietly(prepared.outputPath);
+      job.status = 'error';
+      job.error = this.toErrorPayload(failure);
+    } else {
       job.status = 'done';
       job.progress = 100;
-      job.outputPath = outputPath;
-    } catch (err) {
-      await this.removeQuietly(outputPath);
-      job.status = 'error';
-      job.error = this.toErrorPayload(err);
-    } finally {
-      // 輸入檔案轉檔完成（無論成功或失敗）即可清除，僅輸出檔案需保留供下載
-      await this.removeQuietly(inputPath);
+      job.outputPath = prepared.outputPath;
     }
   }
 
@@ -177,18 +256,23 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
     return { code: 'FFMPEG_FAILED', message: '轉檔過程發生錯誤，請稍後再試' };
   }
 
+  // body 跟 GET /convert/:id/status 的 error 欄位同形 { code, message }，前端靠 code 顯示對應訊息
   private toHttpException(err: unknown): HttpException {
     const payload = this.toErrorPayload(err);
     switch (payload.code) {
       case 'INVALID_INPUT':
       case 'UNSUPPORTED_COMBINATION':
       case 'PROBE_FAILED':
-        return new BadRequestException(payload.message);
+        return new BadRequestException(payload);
       case 'TIMEOUT':
-        return new RequestTimeoutException(payload.message);
+        return new RequestTimeoutException(payload);
       case 'FFMPEG_FAILED':
+      case 'IMAGE_CONVERT_FAILED':
       default:
-        return new InternalServerErrorException('轉檔過程發生錯誤，請稍後再試');
+        return new InternalServerErrorException({
+          code: payload.code,
+          message: '轉檔過程發生錯誤，請稍後再試',
+        });
     }
   }
 
@@ -203,52 +287,23 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async sweepExpiredJobs(): Promise<void> {
-    const now = Date.now();
-    for (const [id, job] of this.jobs.entries()) {
-      if (now - job.createdAt > OUTPUT_TTL_MS) {
-        this.jobs.delete(id);
-        if (job.outputPath) await this.removeQuietly(job.outputPath);
-      }
-    }
-
-    // 額外保護：掃描輸出資料夾，清除任何未被 registry 追蹤但已過期的殘留檔案
+  private async sweepOrphans(
+    dir: string,
+    tracked: Set<string | undefined>,
+    now: number,
+  ): Promise<void> {
     try {
-      const fs = await import('fs/promises');
-      const files = await fs.readdir(OUTPUTS_DIR);
-      for (const name of files) {
-        const fullPath = join(OUTPUTS_DIR, name);
-        const isTracked = [...this.jobs.values()].some(
-          (job) => job.outputPath === fullPath,
-        );
-        if (isTracked) continue;
+      for (const name of await readdir(dir)) {
+        const fullPath = join(dir, name);
+        if (tracked.has(fullPath)) continue;
         const info = await stat(fullPath).catch(() => null);
-        if (info && now - info.mtimeMs > OUTPUT_TTL_MS) {
+        if (info && now - info.mtimeMs > JOB_TTL_MS) {
           await this.removeQuietly(fullPath);
         }
       }
     } catch (err) {
       this.logger.warn(
-        '掃描殘留輸出檔案失敗',
-        err instanceof Error ? err.message : String(err),
-      );
-    }
-
-    // 額外保護：上傳檔案理論上會在 job 結束時立即刪除，殘留在資料夾裡
-    // 且已過期的檔案必是 removeQuietly 失敗留下的孤兒，直接清除
-    try {
-      const fs = await import('fs/promises');
-      const files = await fs.readdir(UPLOADS_DIR);
-      for (const name of files) {
-        const fullPath = join(UPLOADS_DIR, name);
-        const info = await stat(fullPath).catch(() => null);
-        if (info && now - info.mtimeMs > OUTPUT_TTL_MS) {
-          await this.removeQuietly(fullPath);
-        }
-      }
-    } catch (err) {
-      this.logger.warn(
-        '掃描殘留上傳檔案失敗',
+        `掃描殘留暫存檔失敗: ${dir}`,
         err instanceof Error ? err.message : String(err),
       );
     }

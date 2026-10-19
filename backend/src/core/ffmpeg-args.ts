@@ -71,6 +71,22 @@ function atempoChain(speed: number): string[] {
   return filters;
 }
 
+// 預期輸出長度（秒），也就是進度百分比的分母：裁切區間 ÷ 播放倍率。
+// ffmpeg 回報的 time= 是輸出時間，所以分母不能直接用來源長度。
+// 來源長度未知又沒有完整裁切區間時回 undefined（不回報進度）
+export function expectedOutputDurationSec(
+  sourceSec: number | undefined,
+  tuning: ConvertTuning = {},
+): number | undefined {
+  const start = tuning.trimStartSec ?? 0;
+  if (sourceSec !== undefined && start >= sourceSec) {
+    throw new ConversionError('INVALID_INPUT', '裁切開始時間超過檔案長度');
+  }
+  const end = Math.min(tuning.trimEndSec ?? Infinity, sourceSec ?? Infinity);
+  if (!Number.isFinite(end)) return undefined;
+  return (end - start) / (tuning.speed || 1);
+}
+
 export function buildFfmpegArgs(
   inputPath: string,
   outputPath: string,
@@ -86,8 +102,8 @@ export function buildFfmpegArgs(
     args.push('-ss', String(tuning.trimStartSec));
   }
 
-  args.push('-i', inputPath);
-
+  // -t 必須放在 -i 前面當 input option，限制讀取的「來源」長度；放在後面會變成
+  // 限制輸出長度，搭配 speed 加速時就會多吃掉一段來源
   if (tuning.trimEndSec !== undefined) {
     const duration = tuning.trimEndSec - (tuning.trimStartSec ?? 0);
     if (duration <= 0) {
@@ -98,6 +114,8 @@ export function buildFfmpegArgs(
     }
     args.push('-t', String(duration));
   }
+
+  args.push('-i', inputPath);
 
   // 語意契約見 ConvertTuning.stripMetadata（types.ts）；ffmpeg 預設就是保留，
   // 這裡不用額外做什麼，只有勾了才主動移除
@@ -160,9 +178,12 @@ export function buildFfmpegArgs(
       tuning.saturation !== undefined
     ) {
       const eqParts: string[] = [];
-      if (tuning.brightness !== undefined) eqParts.push(`brightness=${tuning.brightness}`);
-      if (tuning.contrast !== undefined) eqParts.push(`contrast=${tuning.contrast}`);
-      if (tuning.saturation !== undefined) eqParts.push(`saturation=${tuning.saturation}`);
+      if (tuning.brightness !== undefined)
+        eqParts.push(`brightness=${tuning.brightness}`);
+      if (tuning.contrast !== undefined)
+        eqParts.push(`contrast=${tuning.contrast}`);
+      if (tuning.saturation !== undefined)
+        eqParts.push(`saturation=${tuning.saturation}`);
       videoFilters.push(`eq=${eqParts.join(':')}`);
     }
     if (tuning.speed) {

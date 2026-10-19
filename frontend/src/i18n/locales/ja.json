@@ -63,6 +63,7 @@
     "queued": "待機中",
     "processing": "変換中",
     "done": "完了",
+    "downloaded": "ダウンロード済み",
     "error": "失敗"
   },
   "settings": {

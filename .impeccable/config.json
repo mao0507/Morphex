@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "frontend/src/App.vue"
+        ],
+        "createdAt": "2026-10-18T15:29:32.937Z",
+        "reason": "User confirmed: progress-fill width transition is intentional (small bar, gradient scales with fill)"
+      }
+    ]
+  }
+}
