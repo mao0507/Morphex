@@ -460,7 +460,7 @@ function downloadAll() {
           class="visually-hidden"
           type="file"
           multiple
-          :accept="activeTab === 'image' ? 'image/*' : 'video/*,audio/*'"
+          :accept="activeTab === 'image' ? 'image/*' : 'video/*,audio/*,.rm,.rmvb'"
           @change="onInputChange"
           @click.stop
         />

@@ -2,6 +2,8 @@
 // 部分格式（mkv/wma/3gp...）瀏覽器的 File.type 會回傳空字串，這時退而用副檔名
 // 比對後端 /formats 回傳的支援清單，避免合法檔案被誤擋
 const TAB_KINDS = { image: ['image'], video: ['video', 'audio'] }
+// 只能當來源、不在 /formats 輸出清單裡的副檔名；MIME 也不是 video/（RealMedia 是 application/vnd.rn-realmedia）
+export const SOURCE_ONLY_EXTENSIONS = { video: ['rm', 'rmvb'], image: [] }
 
 function fileExtension(name) {
   const idx = name.lastIndexOf('.')
@@ -12,5 +14,6 @@ export function acceptsFile(file, tab, formats) {
   const kinds = TAB_KINDS[tab]
   if (kinds.some((kind) => file.type.startsWith(`${kind}/`))) return true
   const ext = fileExtension(file.name)
+  if (SOURCE_ONLY_EXTENSIONS[tab].includes(ext)) return true
   return formats.some((f) => kinds.includes(f.kind) && f.ext.toLowerCase() === ext)
 }
