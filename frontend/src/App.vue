@@ -366,7 +366,13 @@ function pulseCard(entry) {
   if (card) gsap.fromTo(card, { scale: 1 }, { scale: 1.015, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' })
 }
 
-const conversionQueue = createConversionQueue({ fetch, apiBase: API_BASE, saveBlob, onDone: pulseCard })
+const conversionQueue = createConversionQueue({
+  fetch,
+  apiBase: API_BASE,
+  saveBlob,
+  onDone: pulseCard,
+  getFormats: () => formats.value,
+})
 
 function convertAll() {
   for (const entry of visibleQueue.value) {
@@ -623,7 +629,7 @@ function downloadAll() {
 
           <div class="settings-panel" v-if="entry.settingsOpen && isImageEntry(entry)">
             <div class="settings-grid">
-              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'resolution')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'resolution')">
                 <span class="settings-label">{{ t('settings.scale') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.resolution">
@@ -632,7 +638,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'quality')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'quality')">
                 <span class="settings-label">{{ t('settings.qualityRange') }}</span>
                 <input class="settings-input" type="number" min="1" max="100" :placeholder="t('presets.auto')" v-model="entry.tuning.quality" />
               </label>
@@ -681,7 +687,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'audioBitrate')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'audioBitrate')">
                 <span class="settings-label">{{ t('settings.audioBitrate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.audioBitrate">
@@ -723,7 +729,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'preset')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'preset')">
                 <span class="settings-label">{{ t('settings.encodeSpeed') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.preset">
@@ -733,11 +739,11 @@ function downloadAll() {
                 </div>
               </label>
 
-              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'crf')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'crf')">
                 <span class="settings-label">{{ t('settings.crf') }}</span>
                 <input class="settings-input" type="number" min="0" max="51" :placeholder="t('presets.auto')" v-model="entry.tuning.crf" />
               </label>
-              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'sampleRate')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'sampleRate')">
                 <span class="settings-label">{{ t('settings.sampleRate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.sampleRate">
@@ -746,7 +752,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field" v-if="!isFieldHidden(entry.format, 'audioChannels')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'audioChannels')">
                 <span class="settings-label">{{ t('settings.channels') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.audioChannels">

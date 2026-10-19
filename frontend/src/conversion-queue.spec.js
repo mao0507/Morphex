@@ -68,7 +68,8 @@ describe('conversion queue', () => {
 
   it('目標格式用不到的欄位不送（例如 AMR 的取樣率）', async () => {
     const fetch = fakeBackend({ '/convert': json(202, { id: 'j1', status: 'processing', progress: 0 }) })
-    const queue = createConversionQueue({ fetch, apiBase: API, saveBlob: vi.fn() })
+    const formats = [{ id: 'amr', unsupportedFields: ['sampleRate', 'audioChannels'] }]
+    const queue = createConversionQueue({ fetch, apiBase: API, saveBlob: vi.fn(), getFormats: () => formats })
     const entry = { ...makeEntry(), format: 'amr', tuning: { sampleRate: '44100', normalizeAudio: true } }
 
     await queue.start(entry)

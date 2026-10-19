@@ -11,13 +11,13 @@ export const DOWNLOAD_EXPIRED = 'DOWNLOAD_EXPIRED'
 
 // 空字串/false/null 代表「用預設值」不送；0 是合法值（例如 crf=0 無損）要照送。
 // 開關類欄位送 'true'，其餘原樣送字串，由後端驗證範圍
-function buildFormData(entry) {
+function buildFormData(entry, formats) {
   const formData = new FormData()
   formData.append('file', entry.file)
   if (!entry.compressMode) formData.append('format', entry.format)
   for (const [key, value] of Object.entries(entry.tuning)) {
     if (value === '' || value === false || value == null) continue
-    if (isFieldHidden(entry.format, key)) continue
+    if (isFieldHidden(formats, entry.format, key)) continue
     formData.append(key, value === true ? 'true' : String(value))
   }
   return formData
@@ -31,8 +31,9 @@ async function readJson(res) {
   }
 }
 
-// saveBlob(blob, filename)：把下載結果交給瀏覽器存檔；onDone(entry)：轉換完成時的 UI 回呼
-export function createConversionQueue({ fetch, apiBase, saveBlob, onDone = () => {} }) {
+// saveBlob(blob, filename)：把下載結果交給瀏覽器存檔；onDone(entry)：轉換完成時的 UI 回呼；
+// getFormats()：目前的 /formats 清單，用來略過目標格式不支援的欄位
+export function createConversionQueue({ fetch, apiBase, saveBlob, onDone = () => {}, getFormats = () => [] }) {
   // 每個 entry 目前有效的工作；晚到的回應拿 token 比對，不一致就丟掉
   const active = new WeakMap()
   const downloading = new WeakSet()
@@ -84,7 +85,7 @@ export function createConversionQueue({ fetch, apiBase, saveBlob, onDone = () =>
     entry.downloadUrl = null
 
     try {
-      const res = await fetch(`${apiBase}/convert`, { method: 'POST', body: buildFormData(entry) })
+      const res = await fetch(`${apiBase}/convert`, { method: 'POST', body: buildFormData(entry, getFormats()) })
       const data = await readJson(res)
       if (active.get(entry) !== token) return
       if (!res.ok) return fail(entry, data?.code)
