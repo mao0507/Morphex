@@ -18,7 +18,11 @@ import { join } from 'path';
 import { pipeline, Writable } from 'stream';
 import { ConversionError } from '../core/errors';
 import { ConvertTuning } from '../core/types';
-import { ConvertRequestBody, parseConvertRequest } from './tuning.parser';
+import {
+  ConvertRequestBody,
+  parseConvertRequest,
+  REQUEST_FIELD_BY_TUNING_KEY,
+} from './tuning.parser';
 import { FORMATS, getFormatById } from '../core/formats';
 import { coreEngine } from './core-engine';
 import { OUTPUTS_DIR, UPLOADS_DIR } from './storage.paths';
@@ -98,11 +102,14 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
   }
 
   listFormats() {
-    return FORMATS.map(({ id, label, ext, kind }) => ({
+    return FORMATS.map(({ id, label, ext, kind, unsupportedTuning = [] }) => ({
       id,
       label,
       ext,
       kind,
+      unsupportedFields: unsupportedTuning.map(
+        (key) => REQUEST_FIELD_BY_TUNING_KEY[key],
+      ),
     }));
   }
 

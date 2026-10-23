@@ -1,6 +1,6 @@
 import type sharp from 'sharp';
 import { FormatDefinition } from './types';
-import { getFormatById } from './formats';
+import { assertTuningSupported, getFormatById } from './formats';
 import { probeFile } from './probe';
 import { detectMediaKind } from './detect';
 import { buildFfmpegArgs, expectedOutputDurationSec } from './ffmpeg-args';
@@ -116,6 +116,7 @@ export async function prepareConversion(
       `不支援的目標格式：${options.targetFormatId}`,
     );
   }
+  assertTuningSupported(targetFormat, options.tuning);
 
   const { engine } = await chooseEngine(
     options.inputPath,

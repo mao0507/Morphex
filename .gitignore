@@ -19,3 +19,6 @@ src-tauri/gen/
 # impeccable 本機 hook 快取
 .impeccable/hook.cache.json
 .impeccable/config.local.json
+
+# Git Bash 當機傾印
+*.stackdump

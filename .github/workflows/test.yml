@@ -1,0 +1,49 @@
+name: test
+
+# 整合測試會實際呼叫 @ffmpeg-installer 的 ffmpeg，各平台的 build 編碼器不同（例如 AMR），
+# 所以跟 release 一樣在桌面版會出貨的兩個平台上跑
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: install backend deps
+        working-directory: backend
+        run: npm ci
+
+      - name: backend unit + integration
+        working-directory: backend
+        run: npm test
+
+      - name: backend e2e
+        working-directory: backend
+        run: npm run test:e2e
+
+      - name: install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: frontend unit
+        working-directory: frontend
+        run: npm test
+
+      - name: frontend build
+        working-directory: frontend
+        run: npm run build

@@ -1,6 +1,8 @@
-import { FormatDefinition } from './types';
+import { ConversionError } from './errors';
+import { FFMPEG_ENCODERS } from './ffmpeg-binaries';
+import { ConvertTuning, FormatDefinition } from './types';
 
-export const FORMATS: FormatDefinition[] = [
+const ALL_FORMATS: FormatDefinition[] = [
   {
     id: 'mp4',
     label: 'MP4 (H.264 / AAC)',
@@ -117,7 +119,14 @@ export const FORMATS: FormatDefinition[] = [
     kind: 'video',
     videoCodec: 'libx264',
     audioCodec: 'aac',
-    extraArgs: ['-profile:v', 'baseline', '-level', '3.0', '-pix_fmt', 'yuv420p'],
+    extraArgs: [
+      '-profile:v',
+      'baseline',
+      '-level',
+      '3.0',
+      '-pix_fmt',
+      'yuv420p',
+    ],
     mimeTypes: ['video/3gpp'],
   },
   {
@@ -128,6 +137,18 @@ export const FORMATS: FormatDefinition[] = [
     videoCodec: 'libtheora',
     audioCodec: 'libvorbis',
     mimeTypes: ['video/ogg'],
+  },
+  {
+    // DVD 相容的 MPEG-PS；mpeg2video 不吃 -crf，畫質由 ffmpeg-args 的 -q:v 控制
+    id: 'mpg',
+    label: 'MPG (MPEG-2 / MP2)',
+    ext: 'mpg',
+    kind: 'video',
+    videoCodec: 'mpeg2video',
+    audioCodec: 'mp2',
+    extraArgs: ['-pix_fmt', 'yuv420p'],
+    unsupportedTuning: ['crf', 'preset'],
+    mimeTypes: ['video/mpeg'],
   },
   {
     id: 'gif',
@@ -170,6 +191,17 @@ export const FORMATS: FormatDefinition[] = [
     mimeTypes: ['audio/aiff', 'audio/x-aiff'],
   },
   {
+    // AMR-NB 規格只有 8kHz 單聲道、最高 12.2kbps
+    id: 'amr',
+    label: 'AMR (AMR-NB)',
+    ext: 'amr',
+    kind: 'audio',
+    audioCodec: 'libopencore_amrnb',
+    extraArgs: ['-ar', '8000', '-ac', '1', '-b:a', '12.2k'],
+    unsupportedTuning: ['sampleRateHz', 'audioChannels', 'audioBitrateKbps'],
+    mimeTypes: ['audio/amr'],
+  },
+  {
     id: 'jpg',
     label: 'JPEG',
     ext: 'jpg',
@@ -209,7 +241,50 @@ export const FORMATS: FormatDefinition[] = [
     mimeTypes: ['image/avif'],
     sharpFormat: 'avif',
   },
+  // sharp 寫不出 BMP/ICO：沒有 sharpFormat，由 image-convert.ts 用 sharp 解碼後自己編碼
+  {
+    id: 'bmp',
+    label: 'BMP',
+    ext: 'bmp',
+    kind: 'image',
+    mimeTypes: ['image/bmp'],
+    unsupportedTuning: ['quality'],
+  },
+  {
+    id: 'ico',
+    label: 'ICO',
+    ext: 'ico',
+    kind: 'image',
+    mimeTypes: ['image/x-icon', 'image/vnd.microsoft.icon'],
+    // 尺寸固定 16/32/48/256
+    unsupportedTuning: ['quality', 'resolution'],
+  },
 ];
+
+// ponytail: 查不到編碼器清單（spawn 失敗）就全保留，交給轉檔時的 FFMPEG_FAILED 回報
+const isEncodable = (codec?: string) =>
+  codec === undefined ||
+  FFMPEG_ENCODERS.size === 0 ||
+  FFMPEG_ENCODERS.has(codec);
+
+// 只列這台機器的 ffmpeg 編得出來的格式，/formats 與 getFormatById 都以此為準
+export const FORMATS: FormatDefinition[] = ALL_FORMATS.filter(
+  (format) => isEncodable(format.videoCodec) && isEncodable(format.audioCodec),
+);
+
+export function assertTuningSupported(
+  format: FormatDefinition,
+  tuning: ConvertTuning = {},
+): void {
+  for (const field of format.unsupportedTuning ?? []) {
+    if (tuning[field] !== undefined) {
+      throw new ConversionError(
+        'INVALID_INPUT',
+        `${format.id} 不能調整：${field}`,
+      );
+    }
+  }
+}
 
 export function getFormatById(id: string): FormatDefinition | undefined {
   return FORMATS.find((format) => format.id === id);

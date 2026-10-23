@@ -21,6 +21,8 @@ describe('acceptsFile', () => {
     ['image 分頁：MIME 是 image/', file('a.gif', 'image/gif'), 'image', true],
     ['image 分頁：空 MIME 靠副檔名接受', file('a.avif', ''), 'image', true],
     ['image 分頁：影片被拒', file('a.mp4', 'video/mp4'), 'image', false],
+    ['video 分頁：RMVB 只當來源，靠副檔名接受', file('a.rmvb', 'application/vnd.rn-realmedia-vbr'), 'video', true],
+    ['image 分頁：RMVB 被拒', file('a.rmvb', ''), 'image', false],
     ['不支援的副檔名、空 MIME', file('notes.txt', ''), 'video', false],
     ['沒有副檔名', file('README', ''), 'image', false],
   ])('%s', (_label, f, tab, expected) => {
