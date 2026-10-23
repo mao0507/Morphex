@@ -105,7 +105,7 @@ describe('buildFfmpegArgs', () => {
       '-b:a',
       '128k',
       '-vf',
-      'scale=1280:720',
+      'scale=1280:720:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2',
       '-pix_fmt',
       'yuv420p',
       '/tmp/out.mp4',
