@@ -94,7 +94,8 @@
     "flipHorizontal": "左右反転",
     "flipVertical": "上下反転",
     "deinterlace": "デインターレース",
-    "denoise": "ノイズ除去"
+    "denoise": "ノイズ除去",
+    "repair": "破損ファイルの修復を試みる"
   },
   "presets": {
     "auto": "自動",
