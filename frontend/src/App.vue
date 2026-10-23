@@ -260,6 +260,7 @@ function makeEntry(file, formatId, kind) {
       saturation: '',
       quality: '',
       repair: false,
+      targetSize: '',
     },
     status: 'idle',
     progress: 0,
@@ -343,7 +344,7 @@ function removeEntry(entry) {
   queue.value = queue.value.filter((e) => e.localId !== entry.localId)
 }
 
-const KNOWN_ERROR_CODES = ['INVALID_INPUT', 'UNSUPPORTED_COMBINATION', 'PROBE_FAILED', 'FFMPEG_FAILED', 'TIMEOUT', 'IMAGE_CONVERT_FAILED']
+const KNOWN_ERROR_CODES = ['INVALID_INPUT', 'UNSUPPORTED_COMBINATION', 'PROBE_FAILED', 'FFMPEG_FAILED', 'TIMEOUT', 'IMAGE_CONVERT_FAILED', 'TARGET_SIZE_EXCEEDED']
 
 // 只翻通用錯誤分類，不翻後端回傳的技術細節——那些是給除錯用的固定字串
 function errorLabel(code) {
@@ -711,6 +712,10 @@ function downloadAll() {
               <label class="settings-field settings-field-wide">
                 <span class="settings-label">{{ t('settings.videoBitrate') }}</span>
                 <input class="settings-input" type="number" min="1" :placeholder="t('presets.auto')" v-model="entry.tuning.videoBitrate" />
+              </label>
+              <label class="settings-field settings-field-wide" v-if="!isFieldHidden(formats, entry.format, 'targetSize')">
+                <span class="settings-label">{{ t('settings.targetSize') }}</span>
+                <input class="settings-input" type="number" min="0.1" step="0.1" :placeholder="t('presets.auto')" v-model="entry.tuning.targetSize" />
               </label>
 
               <div class="settings-field settings-field-wide">
