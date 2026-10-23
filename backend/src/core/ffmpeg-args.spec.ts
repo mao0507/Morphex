@@ -160,6 +160,26 @@ describe('buildFfmpegArgs', () => {
     ]);
   });
 
+  it('repair 把容錯旗標放在 -i 前面當 input option', () => {
+    const mp3 = getFormatById('mp3')!;
+    const args = buildFfmpegArgs('/tmp/in.mp4', '/tmp/out.mp3', 'video', mp3, {
+      repair: true,
+    });
+    expect(args).toEqual([
+      '-y',
+      '-err_detect',
+      'ignore_err',
+      '-fflags',
+      '+genpts+discardcorrupt',
+      '-i',
+      '/tmp/in.mp4',
+      '-vn',
+      '-c:a',
+      'libmp3lame',
+      '/tmp/out.mp3',
+    ]);
+  });
+
   it('mpg 沒指定位元率時用固定品質 -q:v，指定了就只用 -b:v', () => {
     const mpg = getFormatById('mpg')!;
     const build = (tuning = {}) =>

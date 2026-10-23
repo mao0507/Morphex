@@ -58,5 +58,7 @@ export interface ConvertTuning {
   brightness?: number; // -1..1
   contrast?: number; // 0..2
   saturation?: number; // 0..3
+  // 嘗試修復損毀來源：ffmpeg 讀檔時略過壞掉的封包、重建時間戳（只影響影音，圖片不吃）
+  repair?: boolean;
   quality?: number; // 1-100，僅圖片格式使用（jpeg/webp/avif/tiff 壓縮品質；png 會連帶開啟調色盤量化）
 }

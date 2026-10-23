@@ -106,6 +106,14 @@ export async function runSharpJob(
       });
     }
 
+    // 翻轉的是像素，先依 EXIF 轉正（rotate() 不帶參數），否則手機直拍照片的
+    // 方向標記還在，看起來會變成翻錯軸
+    if (plan.tuning.flipHorizontal || plan.tuning.flipVertical) {
+      pipeline = pipeline.rotate();
+      if (plan.tuning.flipHorizontal) pipeline = pipeline.flop();
+      if (plan.tuning.flipVertical) pipeline = pipeline.flip();
+    }
+
     // 語意契約見 ConvertTuning.stripMetadata（types.ts）；sharp 預設就是移除，
     // 這裡要主動呼叫 withMetadata() 蓋掉，沒勾才會變成「保留」
     if (!plan.tuning.stripMetadata) {

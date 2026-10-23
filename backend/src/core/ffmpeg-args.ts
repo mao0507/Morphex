@@ -101,6 +101,11 @@ export function buildFfmpegArgs(
 
   const args = ['-y'];
 
+  // 容錯旗標是 input option，必須在 -i 前面才會作用在讀取來源上
+  if (tuning.repair) {
+    args.push('-err_detect', 'ignore_err', '-fflags', '+genpts+discardcorrupt');
+  }
+
   if (tuning.trimStartSec !== undefined) {
     args.push('-ss', String(tuning.trimStartSec));
   }

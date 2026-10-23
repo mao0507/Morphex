@@ -33,6 +33,7 @@ export interface ConvertRequestBody {
   contrast?: string;
   saturation?: string;
   quality?: string;
+  repair?: string;
 }
 
 const RESOLUTION_RE = /^\d+x\d+$/;
@@ -128,6 +129,7 @@ export const REQUEST_FIELD_BY_TUNING_KEY: Record<keyof ConvertTuning, Field> = {
   contrast: 'contrast',
   saturation: 'saturation',
   quality: 'quality',
+  repair: 'repair',
 };
 
 export function parseConvertRequest(body: ConvertRequestBody): {
@@ -164,6 +166,7 @@ export function parseConvertRequest(body: ConvertRequestBody): {
       contrast: read(body, 'contrast', numberIn(0, 2)),
       saturation: read(body, 'saturation', numberIn(0, 3)),
       quality: read(body, 'quality', numberIn(1, 100)),
+      repair: on('repair'),
     },
   };
 }
