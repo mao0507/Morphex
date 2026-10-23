@@ -38,6 +38,7 @@ describe('parseConvertRequest', () => {
     ['saturation', '3', 'saturation', 3],
     ['quality', '80', 'quality', 80],
     ['repair', 'true', 'repair', true],
+    ['targetSize', '9.5', 'targetSizeMB', 9.5],
   ])('%s=%s → %s', (field, value, key, expected) => {
     const tuning = tuningOf({ [field]: value });
     expect(tuning[key as keyof typeof tuning]).toEqual(expected);
@@ -54,6 +55,7 @@ describe('parseConvertRequest', () => {
     ['trimEnd', '0'],
     ['normalizeAudio', 'yes'],
     ['repair', '1'],
+    ['targetSize', '0'],
     ['videoCodec', 'divx'],
     ['crf', '52'],
     ['preset', 'turbo'],

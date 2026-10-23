@@ -38,6 +38,55 @@ const PRESET_CODECS = new Set(['libx264', 'libx265']);
 const QSCALE_CODECS = new Set(['mpeg2video']);
 const DEFAULT_QSCALE = '3';
 
+const BYTES_PER_MB = 1024 * 1024;
+// 一趟 ABR 實際大小會在目標上下浮動，再扣掉容器開銷，預留 8% 才不容易超標
+const TARGET_SIZE_MARGIN = 0.92;
+// 目標大小模式沒指定音訊位元率時固定用這個，才能從總預算扣得準
+const TARGET_SIZE_AUDIO_KBPS = 128;
+const MIN_TARGET_VIDEO_KBPS = 100;
+
+export function targetSizeBytes(targetSizeMB: number): number {
+  return targetSizeMB * BYTES_PER_MB;
+}
+
+// 目標大小 → 影片位元率（kbps）：總預算 ÷ 輸出長度，扣掉邊際與音訊
+export function targetSizeVideoKbps(
+  tuning: ConvertTuning & { targetSizeMB: number },
+  outputSec: number | undefined,
+): number {
+  if (tuning.videoBitrateKbps !== undefined || tuning.crf !== undefined) {
+    throw new ConversionError(
+      'INVALID_INPUT',
+      '目標大小不能和影片位元率或 CRF 同時指定',
+    );
+  }
+  if (tuning.videoCodec === 'copy') {
+    throw new ConversionError(
+      'INVALID_INPUT',
+      '直接複製影片串流時不能指定目標大小',
+    );
+  }
+  if (!outputSec) {
+    throw new ConversionError(
+      'INVALID_INPUT',
+      '無法得知影片長度，不能指定目標大小',
+    );
+  }
+  const totalKbps =
+    ((targetSizeBytes(tuning.targetSizeMB) * 8) / 1000 / outputSec) *
+    TARGET_SIZE_MARGIN;
+  const videoKbps = Math.floor(
+    totalKbps - (tuning.audioBitrateKbps ?? TARGET_SIZE_AUDIO_KBPS),
+  );
+  if (videoKbps < MIN_TARGET_VIDEO_KBPS) {
+    throw new ConversionError(
+      'INVALID_INPUT',
+      `目標大小太小：換算影片位元率低於 ${MIN_TARGET_VIDEO_KBPS}kbps`,
+    );
+  }
+  return videoKbps;
+}
+
 export function validateCombination(
   inputKind: MediaKind,
   targetFormat: FormatDefinition,
@@ -96,6 +145,8 @@ export function buildFfmpegArgs(
   inputKind: MediaKind,
   targetFormat: FormatDefinition,
   tuning: ConvertTuning = {},
+  // 預期輸出長度，只有目標大小換算位元率時需要
+  outputDurationSec?: number,
 ): string[] {
   validateCombination(inputKind, targetFormat);
 
@@ -133,6 +184,7 @@ export function buildFfmpegArgs(
 
   const videoFilters: string[] = [];
   const audioFilters: string[] = [];
+  let targetVideoKbps: number | undefined;
 
   if (targetFormat.kind === 'audio') {
     args.push('-vn');
@@ -156,7 +208,21 @@ export function buildFfmpegArgs(
     if (tuning.frameRateFps) {
       args.push('-r', String(tuning.frameRateFps));
     }
-    if (tuning.videoBitrateKbps) {
+    if (tuning.targetSizeMB !== undefined) {
+      // maxrate 壓住峰值、bufsize 給兩秒緩衝，讓一趟 ABR 的大小貼近目標
+      targetVideoKbps = targetSizeVideoKbps(
+        { ...tuning, targetSizeMB: tuning.targetSizeMB },
+        outputDurationSec,
+      );
+      args.push(
+        '-b:v',
+        `${targetVideoKbps}k`,
+        '-maxrate',
+        `${targetVideoKbps}k`,
+        '-bufsize',
+        `${targetVideoKbps * 2}k`,
+      );
+    } else if (tuning.videoBitrateKbps) {
       args.push('-b:v', `${tuning.videoBitrateKbps}k`);
     } else if (videoCodec && QSCALE_CODECS.has(videoCodec)) {
       args.push('-q:v', DEFAULT_QSCALE);
@@ -201,8 +267,11 @@ export function buildFfmpegArgs(
     }
   }
 
-  if (tuning.audioBitrateKbps) {
-    args.push('-b:a', `${tuning.audioBitrateKbps}k`);
+  const audioKbps =
+    tuning.audioBitrateKbps ??
+    (targetVideoKbps !== undefined ? TARGET_SIZE_AUDIO_KBPS : undefined);
+  if (audioKbps) {
+    args.push('-b:a', `${audioKbps}k`);
   }
   if (tuning.audioChannels) {
     args.push('-ac', String(tuning.audioChannels));

@@ -34,6 +34,7 @@ export interface ConvertRequestBody {
   saturation?: string;
   quality?: string;
   repair?: string;
+  targetSize?: string;
 }
 
 const RESOLUTION_RE = /^\d+x\d+$/;
@@ -130,6 +131,7 @@ export const REQUEST_FIELD_BY_TUNING_KEY: Record<keyof ConvertTuning, Field> = {
   saturation: 'saturation',
   quality: 'quality',
   repair: 'repair',
+  targetSizeMB: 'targetSize',
 };
 
 export function parseConvertRequest(body: ConvertRequestBody): {
@@ -167,6 +169,7 @@ export function parseConvertRequest(body: ConvertRequestBody): {
       saturation: read(body, 'saturation', numberIn(0, 3)),
       quality: read(body, 'quality', numberIn(1, 100)),
       repair: on('repair'),
+      targetSizeMB: read(body, 'targetSize', positive),
     },
   };
 }

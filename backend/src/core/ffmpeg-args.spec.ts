@@ -5,6 +5,7 @@ import {
 } from './ffmpeg-args';
 import { getFormatById } from './formats';
 import { ConversionError } from './errors';
+import { ConvertTuning } from './types';
 
 describe('validateCombination', () => {
   it('丟出 UNSUPPORTED_COMBINATION，當 audio 輸入要轉成 video 格式', () => {
@@ -208,6 +209,50 @@ describe('expectedOutputDurationSec', () => {
     ],
   ])('%s', (_label, source, tuning, expected) => {
     expect(expectedOutputDurationSec(source, tuning)).toBe(expected);
+  });
+
+  describe('targetSizeMB', () => {
+    const mp4 = getFormatById('mp4')!;
+    const build = (tuning: ConvertTuning, outputSec?: number) =>
+      buildFfmpegArgs(
+        '/tmp/in.mp4',
+        '/tmp/out.mp4',
+        'video',
+        mp4,
+        tuning,
+        outputSec,
+      );
+
+    it('依輸出長度換算 ABR 位元率，預留 8% 邊際並扣掉音訊', () => {
+      // 10 MiB × 8 ÷ 80 秒 × 0.92 ≈ 964 kbps，扣音訊 128k → 836k
+      const args = build({ targetSizeMB: 10 }, 80);
+      expect(args.join(' ')).toContain(
+        '-b:v 836k -maxrate 836k -bufsize 1672k',
+      );
+      expect(args.join(' ')).toContain('-b:a 128k');
+    });
+
+    it('有指定音訊位元率就用它來扣', () => {
+      const args = build({ targetSizeMB: 10, audioBitrateKbps: 64 }, 80);
+      expect(args.join(' ')).toContain('-b:v 900k');
+      expect(args.filter((a) => a === '-b:a')).toHaveLength(1);
+    });
+
+    it.each<[string, ConvertTuning, number | undefined]>([
+      [
+        '同時指定 videoBitrate',
+        { targetSizeMB: 10, videoBitrateKbps: 500 },
+        80,
+      ],
+      ['同時指定 crf', { targetSizeMB: 10, crf: 20 }, 80],
+      ['影片編碼 copy', { targetSizeMB: 10, videoCodec: 'copy' }, 80],
+      ['輸出長度未知', { targetSizeMB: 10 }, undefined],
+      ['換算後低於 100kbps', { targetSizeMB: 1 }, 60],
+    ])('%s：INVALID_INPUT', (_, tuning, outputSec) => {
+      expect(() => build(tuning, outputSec)).toThrow(
+        expect.objectContaining({ code: 'INVALID_INPUT' }),
+      );
+    });
   });
 
   it('裁切起點超過來源長度時丟出 INVALID_INPUT', () => {
