@@ -75,6 +75,7 @@
     "frameRate": "幀率",
     "audioBitrate": "音訊位元率",
     "videoBitrate": "視訊位元率 (kbps)",
+    "devicePreset": "裝置預設",
     "targetSize": "目標大小 (MB)",
     "trimRange": "剪輯範圍（秒）",
     "trimStartPlaceholder": "開始",
@@ -97,6 +98,16 @@
     "deinterlace": "去交錯",
     "denoise": "降噪",
     "repair": "嘗試修復損毀檔案"
+  },
+  "devicePresets": {
+    "none": "無",
+    "custom": "自訂",
+    "iphone": "iPhone / iPad",
+    "android": "Android",
+    "youtube1080": "YouTube 1080p",
+    "vertical": "Instagram / TikTok（直式）",
+    "webSmall": "網頁小檔（WebM）",
+    "discord": "Discord（10MB 以內）"
   },
   "presets": {
     "auto": "自動",

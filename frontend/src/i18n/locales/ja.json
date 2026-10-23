@@ -75,6 +75,7 @@
     "frameRate": "フレームレート",
     "audioBitrate": "音声ビットレート",
     "videoBitrate": "映像ビットレート (kbps)",
+    "devicePreset": "デバイスプリセット",
     "targetSize": "目標サイズ (MB)",
     "trimRange": "トリミング範囲（秒）",
     "trimStartPlaceholder": "開始",
@@ -97,6 +98,16 @@
     "deinterlace": "デインターレース",
     "denoise": "ノイズ除去",
     "repair": "破損ファイルの修復を試みる"
+  },
+  "devicePresets": {
+    "none": "なし",
+    "custom": "カスタム",
+    "iphone": "iPhone / iPad",
+    "android": "Android",
+    "youtube1080": "YouTube 1080p",
+    "vertical": "Instagram / TikTok（縦型）",
+    "webSmall": "Web 用軽量（WebM）",
+    "discord": "Discord（10MB 以下）"
   },
   "presets": {
     "auto": "自動",
