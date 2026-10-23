@@ -75,6 +75,7 @@
     "frameRate": "幀率",
     "audioBitrate": "音訊位元率",
     "videoBitrate": "視訊位元率 (kbps)",
+    "targetSize": "目標大小 (MB)",
     "trimRange": "剪輯範圍（秒）",
     "trimStartPlaceholder": "開始",
     "trimEndPlaceholder": "結尾",
@@ -123,6 +124,7 @@
       "PROBE_FAILED": "無法解析檔案內容",
       "FFMPEG_FAILED": "轉檔過程發生錯誤",
       "TIMEOUT": "轉檔逾時",
+      "TARGET_SIZE_EXCEEDED": "輸出超過目標大小，請調高目標大小",
       "IMAGE_CONVERT_FAILED": "圖片轉檔失敗"
     }
   }

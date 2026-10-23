@@ -272,11 +272,19 @@ export const FORMATS: FormatDefinition[] = ALL_FORMATS.filter(
   (format) => isEncodable(format.videoCodec) && isEncodable(format.audioCodec),
 );
 
+// 目標大小靠壓影片位元率達成，只有影片目標有意義，不用逐一寫進每個音訊/圖片格式
+export function unsupportedTuningOf(
+  format: FormatDefinition,
+): (keyof ConvertTuning)[] {
+  const own = format.unsupportedTuning ?? [];
+  return format.kind === 'video' ? own : [...own, 'targetSizeMB'];
+}
+
 export function assertTuningSupported(
   format: FormatDefinition,
   tuning: ConvertTuning = {},
 ): void {
-  for (const field of format.unsupportedTuning ?? []) {
+  for (const field of unsupportedTuningOf(format)) {
     if (tuning[field] !== undefined) {
       throw new ConversionError(
         'INVALID_INPUT',

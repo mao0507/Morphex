@@ -80,6 +80,20 @@ describe('conversion queue', () => {
     expect(sent).not.toHaveProperty('sampleRate')
   })
 
+  it('填了目標大小就不送影片位元率與 CRF（後端視為互斥）', async () => {
+    const fetch = fakeBackend({ '/convert': json(202, { id: 'j1', status: 'processing', progress: 0 }) })
+    const queue = createConversionQueue({ fetch, apiBase: API, saveBlob: vi.fn(), getFormats: () => [{ id: 'mp4', unsupportedFields: [] }] })
+    const entry = { ...makeEntry(), format: 'mp4', tuning: { targetSize: '9.5', crf: '20', videoBitrate: '800' } }
+
+    await queue.start(entry)
+    queue.stop(entry)
+
+    const sent = Object.fromEntries(fetch.mock.calls[0][1].body.entries())
+    expect(sent).toMatchObject({ targetSize: '9.5' })
+    expect(sent).not.toHaveProperty('crf')
+    expect(sent).not.toHaveProperty('videoBitrate')
+  })
+
   it('輪詢不重疊，停止後晚到的回應不改狀態', async () => {
     const slow = deferred()
     const fetch = fakeBackend({

@@ -75,6 +75,7 @@
     "frameRate": "Frame rate",
     "audioBitrate": "Audio bitrate",
     "videoBitrate": "Video bitrate (kbps)",
+    "targetSize": "Target size (MB)",
     "trimRange": "Trim range (seconds)",
     "trimStartPlaceholder": "Start",
     "trimEndPlaceholder": "End",
@@ -123,6 +124,7 @@
       "PROBE_FAILED": "Could not read file content",
       "FFMPEG_FAILED": "An error occurred during conversion",
       "TIMEOUT": "Conversion timed out",
+      "TARGET_SIZE_EXCEEDED": "Output exceeded the target size — try a larger target",
       "IMAGE_CONVERT_FAILED": "Image conversion failed"
     }
   }

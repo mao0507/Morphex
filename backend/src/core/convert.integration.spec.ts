@@ -1,9 +1,13 @@
 import { spawnSync } from 'child_process';
 import { FFPROBE_PATH } from './ffmpeg-binaries';
-import { mkdtempSync, existsSync, rmSync } from 'fs';
+import { mkdtempSync, existsSync, rmSync, statSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { convertFile } from './convert';
+import {
+  convertFile,
+  prepareConversion,
+  runPreparedConversion,
+} from './convert';
 import { ConversionError } from './errors';
 import { FFMPEG_PATH } from './ffmpeg-binaries';
 
@@ -54,6 +58,38 @@ describe('convertFile (整合測試，需本機已安裝 ffmpeg/ffprobe)', () =>
 
     expect(result.inputKind).toBe('video');
     expect(existsSync(outputPath)).toBe(true);
+  }, 30_000);
+
+  it('targetSizeMB：輸出不超過目標大小', async () => {
+    const inputPath = join(workDir, 'sample-size.mp4');
+    const outputPath = join(workDir, 'sample-size.mp4.out.mp4');
+    generateSampleVideo(inputPath);
+
+    await convertFile({
+      inputPath,
+      outputPath,
+      targetFormatId: 'mp4',
+      tuning: { targetSizeMB: 0.1 },
+    });
+
+    expect(statSync(outputPath).size).toBeLessThanOrEqual(0.1 * 1024 * 1024);
+  }, 30_000);
+
+  it('輸出超過目標大小：TARGET_SIZE_EXCEEDED', async () => {
+    const inputPath = join(workDir, 'sample-over.mp4');
+    const outputPath = join(workDir, 'sample-over.out.mp4');
+    generateSampleVideo(inputPath);
+    const prepared = await prepareConversion({
+      inputPath,
+      outputPath,
+      targetFormatId: 'mp4',
+    });
+    // ponytail: 直接把上限壓到 1 byte，真實輸出必定超標
+    const plan = { ...prepared.plan, maxBytes: 1 };
+
+    await expect(
+      runPreparedConversion({ ...prepared, plan }),
+    ).rejects.toMatchObject({ code: 'TARGET_SIZE_EXCEEDED' });
   }, 30_000);
 
   it('video 轉 mp3：成功抽取音訊', async () => {

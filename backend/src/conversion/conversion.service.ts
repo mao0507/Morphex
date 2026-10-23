@@ -23,7 +23,7 @@ import {
   parseConvertRequest,
   REQUEST_FIELD_BY_TUNING_KEY,
 } from './tuning.parser';
-import { FORMATS, getFormatById } from '../core/formats';
+import { FORMATS, getFormatById, unsupportedTuningOf } from '../core/formats';
 import { coreEngine } from './core-engine';
 import { OUTPUTS_DIR, UPLOADS_DIR } from './storage.paths';
 
@@ -102,12 +102,12 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
   }
 
   listFormats() {
-    return FORMATS.map(({ id, label, ext, kind, unsupportedTuning = [] }) => ({
-      id,
-      label,
-      ext,
-      kind,
-      unsupportedFields: unsupportedTuning.map(
+    return FORMATS.map((format) => ({
+      id: format.id,
+      label: format.label,
+      ext: format.ext,
+      kind: format.kind,
+      unsupportedFields: unsupportedTuningOf(format).map(
         (key) => REQUEST_FIELD_BY_TUNING_KEY[key],
       ),
     }));

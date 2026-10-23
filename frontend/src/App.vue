@@ -260,6 +260,7 @@ function makeEntry(file, formatId, kind) {
       saturation: '',
       quality: '',
       repair: false,
+      targetSize: '',
     },
     status: 'idle',
     progress: 0,
@@ -343,7 +344,7 @@ function removeEntry(entry) {
   queue.value = queue.value.filter((e) => e.localId !== entry.localId)
 }
 
-const KNOWN_ERROR_CODES = ['INVALID_INPUT', 'UNSUPPORTED_COMBINATION', 'PROBE_FAILED', 'FFMPEG_FAILED', 'TIMEOUT', 'IMAGE_CONVERT_FAILED']
+const KNOWN_ERROR_CODES = ['INVALID_INPUT', 'UNSUPPORTED_COMBINATION', 'PROBE_FAILED', 'FFMPEG_FAILED', 'TIMEOUT', 'IMAGE_CONVERT_FAILED', 'TARGET_SIZE_EXCEEDED']
 
 // 只翻通用錯誤分類，不翻後端回傳的技術細節——那些是給除錯用的固定字串
 function errorLabel(code) {
@@ -630,7 +631,7 @@ function downloadAll() {
 
           <div class="settings-panel" v-if="entry.settingsOpen && isImageEntry(entry)">
             <div class="settings-grid">
-              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'resolution')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'resolution')">
                 <span class="settings-label">{{ t('settings.scale') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.resolution">
@@ -639,7 +640,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'quality')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'quality')">
                 <span class="settings-label">{{ t('settings.qualityRange') }}</span>
                 <input class="settings-input" type="number" min="1" max="100" :placeholder="t('presets.auto')" v-model="entry.tuning.quality" />
               </label>
@@ -698,7 +699,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'audioBitrate')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'audioBitrate')">
                 <span class="settings-label">{{ t('settings.audioBitrate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.audioBitrate">
@@ -708,9 +709,13 @@ function downloadAll() {
                 </div>
               </label>
 
-              <label class="settings-field settings-field-wide">
+              <label class="settings-field settings-field-wide" v-if="!isFieldHidden(formats, entry, 'videoBitrate')">
                 <span class="settings-label">{{ t('settings.videoBitrate') }}</span>
                 <input class="settings-input" type="number" min="1" :placeholder="t('presets.auto')" v-model="entry.tuning.videoBitrate" />
+              </label>
+              <label class="settings-field settings-field-wide" v-if="!isFieldHidden(formats, entry, 'targetSize')">
+                <span class="settings-label">{{ t('settings.targetSize') }}</span>
+                <input class="settings-input" type="number" min="0.1" step="0.1" :placeholder="t('presets.auto')" v-model="entry.tuning.targetSize" />
               </label>
 
               <div class="settings-field settings-field-wide">
@@ -740,7 +745,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'preset')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'preset')">
                 <span class="settings-label">{{ t('settings.encodeSpeed') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.preset">
@@ -750,11 +755,11 @@ function downloadAll() {
                 </div>
               </label>
 
-              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'crf')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'crf')">
                 <span class="settings-label">{{ t('settings.crf') }}</span>
                 <input class="settings-input" type="number" min="0" max="51" :placeholder="t('presets.auto')" v-model="entry.tuning.crf" />
               </label>
-              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'sampleRate')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'sampleRate')">
                 <span class="settings-label">{{ t('settings.sampleRate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.sampleRate">
@@ -763,7 +768,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field" v-if="!isFieldHidden(formats, entry.format, 'audioChannels')">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'audioChannels')">
                 <span class="settings-label">{{ t('settings.channels') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.audioChannels">

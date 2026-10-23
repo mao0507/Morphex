@@ -17,7 +17,7 @@ function buildFormData(entry, formats) {
   if (!entry.compressMode) formData.append('format', entry.format)
   for (const [key, value] of Object.entries(entry.tuning)) {
     if (value === '' || value === false || value == null) continue
-    if (isFieldHidden(formats, entry.format, key)) continue
+    if (isFieldHidden(formats, entry, key)) continue
     formData.append(key, value === true ? 'true' : String(value))
   }
   return formData
