@@ -1,7 +1,8 @@
 import { ConversionError } from './errors';
+import { FFMPEG_ENCODERS } from './ffmpeg-binaries';
 import { ConvertTuning, FormatDefinition } from './types';
 
-export const FORMATS: FormatDefinition[] = [
+const ALL_FORMATS: FormatDefinition[] = [
   {
     id: 'mp4',
     label: 'MP4 (H.264 / AAC)',
@@ -118,7 +119,14 @@ export const FORMATS: FormatDefinition[] = [
     kind: 'video',
     videoCodec: 'libx264',
     audioCodec: 'aac',
-    extraArgs: ['-profile:v', 'baseline', '-level', '3.0', '-pix_fmt', 'yuv420p'],
+    extraArgs: [
+      '-profile:v',
+      'baseline',
+      '-level',
+      '3.0',
+      '-pix_fmt',
+      'yuv420p',
+    ],
     mimeTypes: ['video/3gpp'],
   },
   {
@@ -252,6 +260,17 @@ export const FORMATS: FormatDefinition[] = [
     unsupportedTuning: ['quality', 'resolution'],
   },
 ];
+
+// ponytail: 查不到編碼器清單（spawn 失敗）就全保留，交給轉檔時的 FFMPEG_FAILED 回報
+const isEncodable = (codec?: string) =>
+  codec === undefined ||
+  FFMPEG_ENCODERS.size === 0 ||
+  FFMPEG_ENCODERS.has(codec);
+
+// 只列這台機器的 ffmpeg 編得出來的格式，/formats 與 getFormatById 都以此為準
+export const FORMATS: FormatDefinition[] = ALL_FORMATS.filter(
+  (format) => isEncodable(format.videoCodec) && isEncodable(format.audioCodec),
+);
 
 export function assertTuningSupported(
   format: FormatDefinition,

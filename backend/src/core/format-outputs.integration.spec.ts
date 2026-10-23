@@ -5,9 +5,13 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { convertFile } from './convert';
 import { FFMPEG_PATH } from './ffmpeg-binaries';
+import { getFormatById } from './formats';
 import { probeFile } from './probe';
 
 // 格式工廠對標補上的輸出格式（BMP/ICO/MPG/AMR）與 RMVB 來源，用小型真實 fixture 驗證輸出內容
+// macOS 的 ffmpeg build 沒有 libopencore_amrnb，AMR 會被 FORMATS 濾掉
+const itAmr = getFormatById('amr') ? it : it.skip;
+
 describe('補充格式 (整合測試，實際呼叫 sharp/ffmpeg/ffprobe)', () => {
   let workDir: string;
   const at = (name: string) => join(workDir, name);
@@ -119,20 +123,32 @@ describe('補充格式 (整合測試，實際呼叫 sharp/ffmpeg/ffprobe)', () =
     expect(codecs).toEqual(['mp2', 'mpeg2video']);
   }, 30_000);
 
-  it('wav → amr：AMR-NB、8kHz、單聲道', async () => {
-    const probe = await probeFile(await convert('tone.wav', 'amr'));
-    expect(probe.streams).toHaveLength(1);
-    expect(probe.streams[0]).toMatchObject({
-      codec_name: 'amr_nb',
-      sample_rate: '8000',
-      channels: 1,
-    });
-  }, 30_000);
+  itAmr(
+    'wav → amr：AMR-NB、8kHz、單聲道',
+    async () => {
+      const probe = await probeFile(await convert('tone.wav', 'amr'));
+      expect(probe.streams).toHaveLength(1);
+      expect(probe.streams[0]).toMatchObject({
+        codec_name: 'amr_nb',
+        sample_rate: '8000',
+        channels: 1,
+      });
+    },
+    30_000,
+  );
 
-  it.each([
+  itAmr.each([
     ['tone.wav', 'amr', 'sampleRateHz', { sampleRateHz: 44100 }],
     ['tone.wav', 'amr', 'audioChannels', { audioChannels: 2 }],
     ['tone.wav', 'amr', 'audioBitrateKbps', { audioBitrateKbps: 128 }],
+  ])('%s → %s 搭配 %s：INVALID_INPUT', async (input, target, field, tuning) => {
+    await expect(convert(input, target, tuning)).rejects.toMatchObject({
+      code: 'INVALID_INPUT',
+      message: expect.stringContaining(field) as string,
+    });
+  });
+
+  it.each([
     ['clip.mp4', 'mpg', 'crf', { crf: 20 }],
     ['half.png', 'bmp', 'quality', { quality: 80 }],
     ['half.png', 'ico', 'resolution', { resolution: '64x64' }],
