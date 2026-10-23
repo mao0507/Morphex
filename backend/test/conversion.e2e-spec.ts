@@ -101,10 +101,10 @@ describe('Conversion API (e2e)', () => {
     expect(res.body.some((f: { id: string }) => f.id === 'mp4')).toBe(true);
     // 不支援的參數以前端送出的欄位名回報
     const formats = res.body as { id: string; unsupportedFields: string[] }[];
-    expect(formats.find((f) => f.id === 'amr')?.unsupportedFields).toEqual([
-      'sampleRate',
-      'audioChannels',
-      'audioBitrate',
+    // 用各平台都有的 MPG：AMR 在 macOS 會因缺編碼器被濾掉
+    expect(formats.find((f) => f.id === 'mpg')?.unsupportedFields).toEqual([
+      'crf',
+      'preset',
     ]);
   });
 
