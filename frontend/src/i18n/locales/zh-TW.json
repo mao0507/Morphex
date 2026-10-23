@@ -94,7 +94,8 @@
     "flipHorizontal": "水平翻轉",
     "flipVertical": "垂直翻轉",
     "deinterlace": "去交錯",
-    "denoise": "降噪"
+    "denoise": "降噪",
+    "repair": "嘗試修復損毀檔案"
   },
   "presets": {
     "auto": "自動",

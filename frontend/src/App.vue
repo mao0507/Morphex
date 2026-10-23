@@ -259,6 +259,7 @@ function makeEntry(file, formatId, kind) {
       contrast: '',
       saturation: '',
       quality: '',
+      repair: false,
     },
     status: 'idle',
     progress: 0,
@@ -658,6 +659,16 @@ function downloadAll() {
                   <span class="toggle-track" :class="{ on: entry.tuning.stripMetadata }"><span class="toggle-knob"></span></span>
                   {{ t('settings.stripMetadata') }}
                 </label>
+                <label class="toggle">
+                  <input type="checkbox" v-model="entry.tuning.flipHorizontal" class="visually-hidden" />
+                  <span class="toggle-track" :class="{ on: entry.tuning.flipHorizontal }"><span class="toggle-knob"></span></span>
+                  {{ t('settings.flipHorizontal') }}
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" v-model="entry.tuning.flipVertical" class="visually-hidden" />
+                  <span class="toggle-track" :class="{ on: entry.tuning.flipVertical }"><span class="toggle-knob"></span></span>
+                  {{ t('settings.flipVertical') }}
+                </label>
               </div>
             </div>
 
@@ -815,6 +826,11 @@ function downloadAll() {
                   <input type="checkbox" v-model="entry.tuning.denoise" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.denoise }"><span class="toggle-knob"></span></span>
                   {{ t('settings.denoise') }}
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" v-model="entry.tuning.repair" class="visually-hidden" />
+                  <span class="toggle-track" :class="{ on: entry.tuning.repair }"><span class="toggle-knob"></span></span>
+                  {{ t('settings.repair') }}
                 </label>
               </div>
             </div>

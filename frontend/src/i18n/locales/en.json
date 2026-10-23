@@ -94,7 +94,8 @@
     "flipHorizontal": "Flip horizontal",
     "flipVertical": "Flip vertical",
     "deinterlace": "Deinterlace",
-    "denoise": "Denoise"
+    "denoise": "Denoise",
+    "repair": "Try to repair"
   },
   "presets": {
     "auto": "Auto",

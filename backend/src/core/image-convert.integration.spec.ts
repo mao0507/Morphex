@@ -82,6 +82,33 @@ describe('convertFile - 圖片 pipeline（整合測試）', () => {
     expect(meta.height).toBe(24);
   }, 15_000);
 
+  // 2x2 四色：左上紅、右上藍、左下綠、右下黑
+  it.each([
+    ['flipHorizontal', [0, 0, 255]],
+    ['flipVertical', [0, 255, 0]],
+  ] as const)(
+    '%s：左上角換成翻轉後的顏色',
+    async (flip, topLeft) => {
+      const inputPath = join(workDir, `${flip}.png`);
+      const outputPath = join(workDir, `${flip}-out.png`);
+      const pixels = Buffer.from([255, 0, 0, 0, 0, 255, 0, 255, 0, 0, 0, 0]);
+      await sharp(pixels, { raw: { width: 2, height: 2, channels: 3 } })
+        .png()
+        .toFile(inputPath);
+
+      await convertFile({
+        inputPath,
+        outputPath,
+        targetFormatId: 'png',
+        tuning: { [flip]: true },
+      });
+
+      const data = await sharp(outputPath).removeAlpha().raw().toBuffer();
+      expect([...data.subarray(0, 3)]).toEqual(topLeft);
+    },
+    15_000,
+  );
+
   it('png 壓縮模式（quality + palette）：輸出檔案明顯變小', async () => {
     const inputPath = join(workDir, 'sample-noisy.png');
     const outputLossless = join(workDir, 'sample-noisy-lossless.png');
