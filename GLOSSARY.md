@@ -12,4 +12,6 @@ Morphex 的領域用語。命名 module、寫文件或討論架構時使用這�
 
 **Target size**：使用者指定的輸出檔案大小上限（`targetSizeMB`，單位 MiB），只限影片目標。後端用預期輸出長度換算成一趟 ABR 的影片位元率（預留 8% 邊際、扣掉音訊），跟影片位元率／CRF 互斥；轉完仍超過就是 `TARGET_SIZE_EXCEEDED`。
 
+**Device preset**：前端的一組填值（`frontend/src/device-presets.js`），例如 Discord、IG/TikTok 直式。套用後就是普通的 format + tuning，後端不知道有預設；之後改了任何欄位就顯示「自訂」。解析度是等比縮進框內，不補黑邊。
+
 **Engine**：實際執行轉檔的工具，sharp（圖片）或 ffmpeg（影音，含動態 GIF）。由 `core/convert.ts#chooseEngine()` 依目標格式種類與來源檔決定。
