@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.0](https://github.com/mao0507/Morphex/compare/morphex-v0.4.3...morphex-v0.5.0) (2026-10-23)
+
+
+### Features
+
+* 新增 BMP、ICO、MPG、AMR 輸出格式與 RMVB 來源 ([#15](https://github.com/mao0507/Morphex/issues/15)) ([210a92e](https://github.com/mao0507/Morphex/commit/210a92e38005dd7d1df325995ab65ec8ba419d49))
+* 新增嘗試修復選項與圖片翻轉 ([#16](https://github.com/mao0507/Morphex/issues/16)) ([781002e](https://github.com/mao0507/Morphex/commit/781002e9197478cd2b4f62c957e1bac73def117a))
+* 新增影片目標大小 ([#17](https://github.com/mao0507/Morphex/issues/17)) ([5d83e6b](https://github.com/mao0507/Morphex/commit/5d83e6b1537452717dc7664ff06a73aa0ad1cf4c))
+* 新增裝置預設 ([#18](https://github.com/mao0507/Morphex/issues/18)) ([e7a73cf](https://github.com/mao0507/Morphex/commit/e7a73cf135539a77ba2d932a1b7ab8006f85dd84))
+* 深化轉檔流程架構，修正多項轉檔與下載問題 ([#12](https://github.com/mao0507/Morphex/issues/12)) ([bc63cc3](https://github.com/mao0507/Morphex/commit/bc63cc3c2f9b2e7dd9f731cd216548e21c39babc))
+
+
+### Bug Fixes
+
+* **desktop:** CSP img-src 允許 blob: 以顯示圖片縮圖 ([39fe44d](https://github.com/mao0507/Morphex/commit/39fe44dfc19c1952e271aab3d1187342fd5952ec))
+* **frontend:** 格式清單載入失敗時自動重試 ([155e0fb](https://github.com/mao0507/Morphex/commit/155e0fbdceddfe0e41ec1c8dd715349231508ab2))
+
 ## [0.4.3](https://github.com/mao0507/Morphex/compare/morphex-v0.4.2...morphex-v0.4.3) (2026-09-01)
 
 
