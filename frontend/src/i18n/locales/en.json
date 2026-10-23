@@ -75,6 +75,7 @@
     "frameRate": "Frame rate",
     "audioBitrate": "Audio bitrate",
     "videoBitrate": "Video bitrate (kbps)",
+    "devicePreset": "Device preset",
     "targetSize": "Target size (MB)",
     "trimRange": "Trim range (seconds)",
     "trimStartPlaceholder": "Start",
@@ -97,6 +98,16 @@
     "deinterlace": "Deinterlace",
     "denoise": "Denoise",
     "repair": "Try to repair"
+  },
+  "devicePresets": {
+    "none": "None",
+    "custom": "Custom",
+    "iphone": "iPhone / iPad",
+    "android": "Android",
+    "youtube1080": "YouTube 1080p",
+    "vertical": "Instagram / TikTok (vertical)",
+    "webSmall": "Web, small file (WebM)",
+    "discord": "Discord (under 10MB)"
   },
   "presets": {
     "auto": "Auto",

@@ -203,7 +203,12 @@ export function buildFfmpegArgs(
     if (audioCodec) args.push('-c:a', audioCodec);
 
     if (tuning.resolution) {
-      videoFilters.push(`scale=${tuning.resolution.replace('x', ':')}`);
+      // 等比縮進 W×H 框內（同圖片的 fit: inside），不補黑邊也不變形；第二個 scale 把
+      // 寬高修成偶數，yuv420p 編碼器要求。內建 ffmpeg 太舊，沒有 force_divisible_by
+      videoFilters.push(
+        `scale=${tuning.resolution.replace('x', ':')}:force_original_aspect_ratio=decrease`,
+        'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+      );
     }
     if (tuning.frameRateFps) {
       args.push('-r', String(tuning.frameRateFps));

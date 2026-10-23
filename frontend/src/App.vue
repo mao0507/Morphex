@@ -6,6 +6,7 @@ import { SUPPORTED_LOCALES, setLocale } from './i18n'
 import { createConversionQueue, DOWNLOAD_EXPIRED } from './conversion-queue'
 import { acceptsFile } from './file-intake'
 import { isFieldHidden } from './format-fields'
+import { DEVICE_PRESETS, applyPreset, emptyTuning, presetState } from './device-presets'
 
 const { t, locale } = useI18n()
 
@@ -15,6 +16,7 @@ const MAX_UPLOAD_MB = 500
 const RESOLUTION_PRESETS = computed(() => [
   { value: '', label: t('presets.resolutionOriginal') },
   { value: '1920x1080', label: '1920×1080 (FHD)' },
+  { value: '1080x1920', label: '1080×1920 (9:16)' },
   { value: '1280x720', label: '1280×720 (HD)' },
   { value: '854x480', label: '854×480 (SD)' },
   { value: '640x360', label: '640×360' },
@@ -234,34 +236,8 @@ function makeEntry(file, formatId, kind) {
     format: formatId,
     compressMode: false,
     settingsOpen: false,
-    tuning: {
-      resolution: '',
-      frameRate: '',
-      videoBitrate: '',
-      audioBitrate: '',
-      trimStart: '',
-      trimEnd: '',
-      normalizeAudio: false,
-      stripMetadata: false,
-      videoCodec: '',
-      audioCodec: '',
-      crf: '',
-      preset: '',
-      audioChannels: '',
-      sampleRate: '',
-      rotate: '',
-      flipHorizontal: false,
-      flipVertical: false,
-      speed: '',
-      deinterlace: false,
-      denoise: false,
-      brightness: '',
-      contrast: '',
-      saturation: '',
-      quality: '',
-      repair: false,
-      targetSize: '',
-    },
+    preset: null,
+    tuning: emptyTuning(),
     status: 'idle',
     progress: 0,
     jobId: null,
@@ -328,6 +304,14 @@ function toggleCompressMode(entry) {
   }
 }
 
+// entry 物件本身是 conversion queue 的 key，只能把新值寫回去，不能換成新物件
+function selectPreset(entry, presetId) {
+  const next = applyPreset(entry, presetId)
+  entry.preset = next.preset
+  entry.format = next.format
+  entry.tuning = next.tuning
+}
+
 function applyTuningToAll(entry) {
   // 圖片跟影音的進階選項語意完全不同（CRF/位元率 vs 縮放/畫質），
   // 只套用到同一種類型的檔案，避免把不相干的設定塞進另一分頁的檔案
@@ -335,6 +319,7 @@ function applyTuningToAll(entry) {
     if (other.localId === entry.localId) continue
     if (other.kind !== entry.kind) continue
     other.tuning = { ...entry.tuning }
+    other.preset = entry.preset
   }
 }
 
@@ -681,6 +666,17 @@ function downloadAll() {
 
           <div class="settings-panel" v-else-if="entry.settingsOpen">
             <div class="settings-grid">
+              <label class="settings-field settings-field-wide">
+                <span class="settings-label">{{ t('settings.devicePreset') }}</span>
+                <div class="select-wrap">
+                  <select class="settings-select" :value="presetState(entry)" @change="selectPreset(entry, $event.target.value)">
+                    <option value="">{{ t('devicePresets.none') }}</option>
+                    <option v-for="p in DEVICE_PRESETS" :key="p.id" :value="p.id">{{ t(`devicePresets.${p.id}`) }}</option>
+                    <option v-if="presetState(entry) === 'custom'" value="custom" disabled>{{ t('devicePresets.custom') }}</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </label>
               <label class="settings-field">
                 <span class="settings-label">{{ t('settings.resolution') }}</span>
                 <div class="select-wrap">

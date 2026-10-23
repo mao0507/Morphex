@@ -9,6 +9,7 @@ import {
   runPreparedConversion,
 } from './convert';
 import { ConversionError } from './errors';
+import { probeFile } from './probe';
 import { FFMPEG_PATH } from './ffmpeg-binaries';
 
 // 這組測試實際呼叫本機 ffmpeg/ffprobe，驗證 core 模組與真實二進位檔的整合行為
@@ -90,6 +91,25 @@ describe('convertFile (整合測試，需本機已安裝 ffmpeg/ffprobe)', () =>
     await expect(
       runPreparedConversion({ ...prepared, plan }),
     ).rejects.toMatchObject({ code: 'TARGET_SIZE_EXCEEDED' });
+  }, 30_000);
+
+  it('resolution 等比縮進框內：橫式來源套直式尺寸不變形', async () => {
+    const inputPath = join(workDir, 'sample-scale.mp4');
+    const outputPath = join(workDir, 'sample-scale.out.mp4');
+    // 64x64 正方形塞進 100x40 的框：高度先頂到 → 40x40
+    generateSampleVideo(inputPath);
+
+    await convertFile({
+      inputPath,
+      outputPath,
+      targetFormatId: 'mp4',
+      tuning: { resolution: '100x40' },
+    });
+
+    const video = (await probeFile(outputPath)).streams.find(
+      (s) => s.codec_type === 'video',
+    );
+    expect(video).toMatchObject({ width: 40, height: 40 });
   }, 30_000);
 
   it('video 轉 mp3：成功抽取音訊', async () => {
