@@ -1,6 +1,6 @@
 import { spawnSync } from 'child_process';
 import { FFPROBE_PATH } from './ffmpeg-binaries';
-import { mkdtempSync, existsSync, rmSync, statSync } from 'fs';
+import { mkdtempSync, existsSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
@@ -129,7 +129,7 @@ describe('convertFile (整合測試，需本機已安裝 ffmpeg/ffprobe)', () =>
 
   it('損毀檔案：丟出 ConversionError(PROBE_FAILED)', async () => {
     const inputPath = join(workDir, 'broken.mp4');
-    require('fs').writeFileSync(inputPath, 'not a real media file');
+    writeFileSync(inputPath, 'not a real media file');
     const outputPath = join(workDir, 'broken-out.mp3');
 
     await expect(
