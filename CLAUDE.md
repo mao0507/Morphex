@@ -92,3 +92,17 @@ No router, no state library. `App.vue` renders and animates a client-side multi-
 * test：增加測試（when adding missing tests）
 * chore：maintain，不影響程式碼運行，建構程序或輔助工具的變動
 * revert：撤銷回覆先前的 commit
+
+## Agent skills
+
+### Issue tracker
+
+Issues 與 spec 放在 GitHub Issues（`mao0507/Morphex`），用 `gh` CLI 操作。See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+沿用預設五個 label：`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`。See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context：repo 根目錄的 `GLOSSARY.md` + `docs/adr/`。See `docs/agents/domain.md`.
