@@ -1,13 +1,30 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { spawnSync } from 'child_process';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import request from 'supertest';
 import sharp from 'sharp';
 import { AppModule } from '../src/app.module';
 import { FFMPEG_PATH } from '../src/core/ffmpeg-binaries';
+
+// supertest 的 res.body 是 any，統一在這裡收斂成已知形狀
+type ApiBody = {
+  id: string;
+  status: string;
+  code?: string;
+  downloadUrl?: string;
+  ext?: string;
+  error?: unknown;
+};
+const body = (res: { body: unknown }) => res.body as ApiBody;
 
 describe('Conversion API (e2e)', () => {
   let app: INestApplication;
@@ -79,16 +96,15 @@ describe('Conversion API (e2e)', () => {
   });
 
   // POST /convert 只同步做格式驗證與 probe，ffmpeg 編碼在背景跑，需輪詢 status 至 done/error
-  async function waitForJobDone(
-    id: string,
-  ): Promise<{ status: string; downloadUrl?: string; error?: unknown }> {
+  async function waitForJobDone(id: string): Promise<ApiBody> {
     const deadline = Date.now() + 20_000;
     while (Date.now() < deadline) {
       const res = await request(app.getHttpServer())
         .get(`/convert/${id}/status`)
         .expect(200);
-      if (res.body.status === 'done' || res.body.status === 'error') {
-        return res.body;
+      const { status } = body(res);
+      if (status === 'done' || status === 'error') {
+        return body(res);
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
@@ -98,9 +114,9 @@ describe('Conversion API (e2e)', () => {
   it('GET /formats 回傳格式清單', async () => {
     const res = await request(app.getHttpServer()).get('/formats').expect(200);
     expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.some((f: { id: string }) => f.id === 'mp4')).toBe(true);
-    // 不支援的參數以前端送出的欄位名回報
     const formats = res.body as { id: string; unsupportedFields: string[] }[];
+    expect(formats.some((f) => f.id === 'mp4')).toBe(true);
+    // 不支援的參數以前端送出的欄位名回報
     // 用各平台都有的 MPG：AMR 在 macOS 會因缺編碼器被濾掉
     expect(formats.find((f) => f.id === 'mpg')?.unsupportedFields).toEqual([
       'crf',
@@ -115,9 +131,9 @@ describe('Conversion API (e2e)', () => {
       .field('format', 'webm')
       .expect(202);
 
-    expect(res.body.id).toBeTruthy();
+    expect(body(res).id).toBeTruthy();
 
-    const status = await waitForJobDone(res.body.id);
+    const status = await waitForJobDone(body(res).id);
     expect(status.status).toBe('done');
     expect(status.downloadUrl).toMatch(/^\/download\//);
 
@@ -137,7 +153,7 @@ describe('Conversion API (e2e)', () => {
       .field('format', 'mp3')
       .expect(202);
 
-    const status = await waitForJobDone(res.body.id);
+    const status = await waitForJobDone(body(res).id);
     expect(status.status).toBe('done');
     await request(app.getHttpServer()).get(status.downloadUrl!).expect(200);
   }, 30_000);
@@ -149,7 +165,7 @@ describe('Conversion API (e2e)', () => {
       .field('format', 'flac')
       .expect(202);
 
-    const status = await waitForJobDone(res.body.id);
+    const status = await waitForJobDone(body(res).id);
     expect(status.status).toBe('done');
     await request(app.getHttpServer()).get(status.downloadUrl!).expect(200);
   }, 30_000);
@@ -163,7 +179,7 @@ describe('Conversion API (e2e)', () => {
       .field('normalizeAudio', 'true')
       .expect(202);
 
-    const status = await waitForJobDone(res.body.id);
+    const status = await waitForJobDone(body(res).id);
     expect(status.status).toBe('done');
     await request(app.getHttpServer()).get(status.downloadUrl!).expect(200);
   }, 30_000);
@@ -175,7 +191,7 @@ describe('Conversion API (e2e)', () => {
       .field('quality', '50')
       .expect(202);
 
-    const status = await waitForJobDone(res.body.id);
+    const status = await waitForJobDone(body(res).id);
     expect(status.status).toBe('done');
     expect(status.ext).toBe('jpg');
     await request(app.getHttpServer()).get(status.downloadUrl!).expect(200);
@@ -194,7 +210,7 @@ describe('Conversion API (e2e)', () => {
       .attach('file', sampleAudioPath)
       .field('format', 'mp4')
       .expect(400)
-      .expect((res) => expect(res.body.code).toBe('UNSUPPORTED_COMBINATION'));
+      .expect((res) => expect(body(res).code).toBe('UNSUPPORTED_COMBINATION'));
   }, 15_000);
 
   it('非媒體檔（損毀檔案）：回傳 400', async () => {
@@ -203,7 +219,7 @@ describe('Conversion API (e2e)', () => {
       .attach('file', brokenFilePath)
       .field('format', 'mp3')
       .expect(400)
-      .expect((res) => expect(res.body.code).toBe('PROBE_FAILED'));
+      .expect((res) => expect(body(res).code).toBe('PROBE_FAILED'));
   }, 15_000);
 
   it('未知輸出格式：回傳 400', async () => {
@@ -236,12 +252,11 @@ describe('Conversion API (e2e)', () => {
   it('暫存資料夾在請求結束後不殘留 uploads/outputs 檔案', () => {
     const uploadsDir = join(process.cwd(), 'tmp', 'uploads');
     const outputsDir = join(process.cwd(), 'tmp', 'outputs');
-    const fs = require('fs');
     const leftoverUploads = existsSync(uploadsDir)
-      ? fs.readdirSync(uploadsDir)
+      ? readdirSync(uploadsDir)
       : [];
     const leftoverOutputs = existsSync(outputsDir)
-      ? fs.readdirSync(outputsDir)
+      ? readdirSync(outputsDir)
       : [];
     expect(leftoverUploads).toEqual([]);
     expect(leftoverOutputs).toEqual([]);

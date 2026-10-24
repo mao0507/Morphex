@@ -17,8 +17,10 @@ export interface FormatDefinition {
   unsupportedTuning?: (keyof ConvertTuning)[];
 }
 
-export type VideoCodecChoice = 'h264' | 'h265' | 'vp9' | 'av1' | 'mpeg4' | 'copy';
-export type AudioCodecChoice = 'aac' | 'mp3' | 'opus' | 'flac' | 'vorbis' | 'copy';
+export type VideoCodecChoice =
+  'h264' | 'h265' | 'vp9' | 'av1' | 'mpeg4' | 'copy';
+export type AudioCodecChoice =
+  'aac' | 'mp3' | 'opus' | 'flac' | 'vorbis' | 'copy';
 export type FfmpegPreset =
   | 'ultrafast'
   | 'superfast'

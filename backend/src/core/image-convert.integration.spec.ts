@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { spawnSync } from 'child_process';
-import { mkdtempSync, existsSync, rmSync, statSync } from 'fs';
+import { mkdtempSync, existsSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { convertFile, resolveTargetFormat } from './convert';
@@ -228,7 +228,7 @@ describe('convertFile - 圖片 pipeline（整合測試）', () => {
 
   it('損毀檔案：仍走原本 ffprobe 分支並丟出 PROBE_FAILED，而非誤判成圖片', async () => {
     const inputPath = join(workDir, 'broken.jpg');
-    require('fs').writeFileSync(inputPath, 'not a real image file');
+    writeFileSync(inputPath, 'not a real image file');
     const outputPath = join(workDir, 'broken-out.png');
 
     await expect(
