@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/mao0507/Morphex/compare/morphex-v0.5.0...morphex-v0.5.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* 裝置預設補齊 spec 數值，補修復與影片翻轉整合測試 ([#20](https://github.com/mao0507/Morphex/issues/20)) ([355494f](https://github.com/mao0507/Morphex/commit/355494fec0ab130d2eaf93cecd152293940e4ed1))
+
 ## [0.5.0](https://github.com/mao0507/Morphex/compare/morphex-v0.4.3...morphex-v0.5.0) (2026-10-23)
 
 
