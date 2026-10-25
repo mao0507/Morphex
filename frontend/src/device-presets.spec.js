@@ -11,6 +11,20 @@ describe('device presets', () => {
     expect(presetState(entry)).toBe('discord')
   })
 
+  // 數值對照 issue #13 的預設表
+  it.each([
+    ['iphone', 'mp4', { resolution: '1920x1080', audioBitrate: '192' }],
+    ['android', 'mp4', { resolution: '1280x720', audioBitrate: '128' }],
+    ['youtube1080', 'mp4', { resolution: '1920x1080', crf: '18', preset: 'slow', audioBitrate: '192' }],
+    ['vertical', 'mp4', { resolution: '1080x1920', frameRate: '30', audioBitrate: '128' }],
+    ['webSmall', 'webm', { resolution: '1280x720', videoCodec: 'vp9', audioCodec: 'opus', audioBitrate: '96' }],
+    ['discord', 'mp4', { resolution: '1280x720', audioBitrate: '96', targetSize: '9.5' }],
+  ])('%s 的格式與欄位', (id, format, tuning) => {
+    const entry = applyPreset(blank(), id)
+    expect(entry.format).toBe(format)
+    expect(entry.tuning).toMatchObject(tuning)
+  })
+
   it('不改原 entry', () => {
     const original = blank()
     applyPreset(original, 'youtube1080')

@@ -33,13 +33,13 @@ export function emptyTuning() {
 
 // 解析度是「等比縮進框內」，不補黑邊：直式預設套在橫式來源上會是 1080 寬的橫式片
 export const DEVICE_PRESETS = [
-  { id: 'iphone', format: 'mp4', tuning: { videoCodec: 'h264', audioCodec: 'aac', crf: '23' } },
-  { id: 'android', format: 'mp4', tuning: { videoCodec: 'h264', audioCodec: 'aac', crf: '23', audioBitrate: '128' } },
-  { id: 'youtube1080', format: 'mp4', tuning: { videoCodec: 'h264', audioCodec: 'aac', resolution: '1920x1080', crf: '18', audioBitrate: '192' } },
-  { id: 'vertical', format: 'mp4', tuning: { videoCodec: 'h264', audioCodec: 'aac', resolution: '1080x1920', frameRate: '30', crf: '20' } },
-  { id: 'webSmall', format: 'webm', tuning: { videoCodec: 'vp9', audioCodec: 'opus', resolution: '1280x720', crf: '33' } },
+  { id: 'iphone', format: 'mp4', tuning: { videoCodec: 'h264', audioCodec: 'aac', resolution: '1920x1080', crf: '23', audioBitrate: '192' } },
+  { id: 'android', format: 'mp4', tuning: { videoCodec: 'h264', audioCodec: 'aac', resolution: '1280x720', crf: '23', audioBitrate: '128' } },
+  { id: 'youtube1080', format: 'mp4', tuning: { videoCodec: 'h264', audioCodec: 'aac', resolution: '1920x1080', crf: '18', preset: 'slow', audioBitrate: '192' } },
+  { id: 'vertical', format: 'mp4', tuning: { videoCodec: 'h264', audioCodec: 'aac', resolution: '1080x1920', frameRate: '30', crf: '20', audioBitrate: '128' } },
+  { id: 'webSmall', format: 'webm', tuning: { videoCodec: 'vp9', audioCodec: 'opus', resolution: '1280x720', crf: '33', audioBitrate: '96' } },
   // 預留 0.5MB 給 Discord 的 10MB 上限
-  { id: 'discord', format: 'mp4', tuning: { videoCodec: 'h264', audioCodec: 'aac', targetSize: '9.5' } },
+  { id: 'discord', format: 'mp4', tuning: { videoCodec: 'h264', audioCodec: 'aac', resolution: '1280x720', audioBitrate: '96', targetSize: '9.5' } },
 ]
 
 export function applyPreset(entry, presetId) {
