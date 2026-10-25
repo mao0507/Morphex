@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { spawnSync } from 'child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { convertFile } from './convert';
@@ -8,7 +8,8 @@ import { FFMPEG_PATH } from './ffmpeg-binaries';
 import { getFormatById } from './formats';
 import { probeFile } from './probe';
 
-// 格式工廠對標補上的輸出格式（BMP/ICO/MPG/AMR）與 RMVB 來源，用小型真實 fixture 驗證輸出內容
+// 格式工廠對標補上的輸出格式（BMP/ICO/MPG/AMR）、RMVB 來源，以及嘗試修復、影片翻轉，
+// 用小型真實 fixture 驗證輸出內容
 // macOS 的 ffmpeg build 沒有 libopencore_amrnb，AMR 會被 FORMATS 濾掉
 const itAmr = getFormatById('amr') ? it : it.skip;
 
@@ -57,6 +58,44 @@ describe('補充格式 (整合測試，實際呼叫 sharp/ffmpeg/ffprobe)', () =
       '-f',
       'rm',
       at('old.rmvb'),
+    ]);
+    // moov 在前、每 5 格一個關鍵格，砍掉後 40% 仍讀得到前段：模擬下載中斷的檔案
+    ffmpeg([
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc=d=4:s=160x120:r=10',
+      '-g',
+      '5',
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      at('full.mp4'),
+    ]);
+    const full = readFileSync(at('full.mp4'));
+    writeFileSync(
+      at('truncated.mp4'),
+      full.subarray(0, Math.floor(full.length * 0.6)),
+    );
+    // 左半紅、右半藍的 1 秒影片：驗翻轉後左上角變藍
+    const redBlue = Buffer.alloc(64 * 48 * 3);
+    for (let i = 0; i < 64 * 48; i++) {
+      redBlue.set(i % 64 < 32 ? [255, 0, 0] : [0, 0, 255], i * 3);
+    }
+    await sharp(redBlue, { raw: { width: 64, height: 48, channels: 3 } })
+      .png()
+      .toFile(at('red-blue.png'));
+    ffmpeg([
+      '-loop',
+      '1',
+      '-i',
+      at('red-blue.png'),
+      '-t',
+      '1',
+      '-pix_fmt',
+      'yuv420p',
+      at('red-blue.mp4'),
     ]);
   }, 30_000);
 
@@ -162,5 +201,39 @@ describe('補充格式 (整合測試，實際呼叫 sharp/ffmpeg/ffprobe)', () =
   it('rmvb → mp4：RealMedia 來源可讀', async () => {
     const probe = await probeFile(await convert('old.rmvb', 'mp4'));
     expect(probe.streams.map((s) => s.codec_name)).toContain('h264');
+  }, 30_000);
+
+  // 這份截斷檔不勾修復也轉得過（ffmpeg 本來就會略過壞尾巴），所以只驗勾了修復
+  // 能輸出、時長落在「有東西但不超過原片」的合理範圍
+  it('repair：截斷的 mp4 仍輸出前段內容', async () => {
+    const probe = await probeFile(
+      await convert('truncated.mp4', 'mp4', { repair: true }),
+    );
+    const duration = Number(probe.format?.duration);
+    expect(duration).toBeGreaterThan(0.5);
+    expect(duration).toBeLessThanOrEqual(4);
+  }, 30_000);
+
+  it('flipHorizontal：影片左上角換成右半的藍色', async () => {
+    const output = await convert('red-blue.mp4', 'mp4', {
+      flipHorizontal: true,
+    });
+    const frame = spawnSync(FFMPEG_PATH, [
+      '-v',
+      'error',
+      '-i',
+      output,
+      '-frames:v',
+      '1',
+      '-f',
+      'rawvideo',
+      '-pix_fmt',
+      'rgb24',
+      '-',
+    ]).stdout;
+    // 取 (8, 8)，避開邊緣的色度取樣誤差
+    const [r, , b] = frame.subarray((8 * 64 + 8) * 3);
+    expect(b).toBeGreaterThan(150);
+    expect(r).toBeLessThan(100);
   }, 30_000);
 });

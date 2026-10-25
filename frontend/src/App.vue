@@ -36,6 +36,7 @@ const AUDIO_BITRATE_PRESETS = computed(() => [
   { value: '256', label: '256 kbps' },
   { value: '192', label: '192 kbps' },
   { value: '128', label: '128 kbps' },
+  { value: '96', label: '96 kbps' },
 ])
 
 const VIDEO_CODEC_PRESETS = computed(() => [
