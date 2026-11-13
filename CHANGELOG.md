@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.2](https://github.com/mao0507/Morphex/compare/morphex-v0.5.1...morphex-v0.5.2) (2026-11-13)
+
+
+### Bug Fixes
+
+* 目標用不到的轉檔參數一律拒絕並隱藏 ([39662db](https://github.com/mao0507/Morphex/commit/39662dbb368ad986d3f1f6ae7417b5d661467b73))
+* 轉檔參數適用性集中管理與架構深化 ([5bde34b](https://github.com/mao0507/Morphex/commit/5bde34b74a6707044f1a98399350fa06bb8c56ff))
+
 ## [0.5.1](https://github.com/mao0507/Morphex/compare/morphex-v0.5.0...morphex-v0.5.1) (2026-10-25)
 
 
