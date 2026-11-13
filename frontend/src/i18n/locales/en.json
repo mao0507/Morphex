@@ -19,6 +19,7 @@
     "eyebrow": "Free · No sign-up · Batch conversion",
     "title": "Video, audio and images, converted in one go",
     "desc": "Drop your files, pick a format, and Morphex converts, compresses and trims them. Files are deleted right after download — nothing is kept.",
+    "formatCount": "{count} output formats supported",
     "cta": {
       "start": "Start converting",
       "video": {

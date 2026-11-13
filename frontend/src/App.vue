@@ -103,6 +103,7 @@ const theme = ref(localStorage.getItem('morphex-theme') || systemTheme())
 const fileInputRef = ref(null)
 const shellRef = ref(null)
 
+const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 let gsapCtx
 let rejectionTimer = null
 
@@ -156,7 +157,7 @@ function isImageEntry(entry) {
 onMounted(async () => {
   applyTheme()
 
-  if (shellRef.value) {
+  if (shellRef.value && !reduceMotion) {
     gsapCtx = gsap.context(() => {
       gsap.from('.site-header', { y: -12, autoAlpha: 0, duration: 0.35, ease: 'power2.out' })
     }, shellRef.value)
@@ -195,10 +196,12 @@ async function enterTool(tab) {
 }
 
 function onCardEnter(el, done) {
+  if (reduceMotion) return done()
   gsap.from(el, { y: -16, autoAlpha: 0, duration: 0.4, ease: 'power2.out', onComplete: done })
 }
 
 function onCardLeave(el, done) {
+  if (reduceMotion) return done()
   gsap.to(el, { x: 24, autoAlpha: 0, duration: 0.28, ease: 'power1.in', onComplete: done })
 }
 
@@ -263,6 +266,7 @@ function saveBlob(blob, filename) {
 }
 
 function pulseCard(entry) {
+  if (reduceMotion) return
   const card = document.querySelector(`[data-local-id="${entry.localId}"]`)
   if (card) gsap.fromTo(card, { scale: 1 }, { scale: 1.015, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' })
 }
@@ -821,9 +825,10 @@ const entryQueue = createQueue({
 }
 
 .brand-name {
-  font-weight: 600;
-  font-size: 15.5px;
-  letter-spacing: -0.015em;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.025em;
 }
 
 .beta-tag {
@@ -960,10 +965,11 @@ const entryQueue = createQueue({
 }
 
 .hero-text h1 {
-  font-size: 27px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  margin: 0 0 7px;
+  font-family: var(--display);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 8px;
 }
 
 .hero-text p {
@@ -1447,8 +1453,8 @@ const entryQueue = createQueue({
 .progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 78%, #fff), var(--accent));
-  box-shadow: 0 0 12px color-mix(in oklab, var(--accent) 55%, transparent);
+  background: var(--morph);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--accent-2) 45%, transparent);
   transition: width 0.3s ease;
 }
 
@@ -1759,5 +1765,57 @@ const entryQueue = createQueue({
   border-radius: 6px;
   padding: 2px 7px;
   line-height: 1.3;
+}
+
+@media (max-width: 720px) {
+  .header-inner,
+  .footer-inner {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .beta-tag,
+  .row-divider {
+    display: none;
+  }
+
+  .page {
+    padding: 24px 18px 170px;
+  }
+
+  .hero-text h1 {
+    font-size: 26px;
+  }
+
+  .dropzone {
+    padding: 20px;
+  }
+
+  .status-zone {
+    flex: 1 1 auto;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-field-wide {
+    grid-column: auto;
+  }
+
+  .trim-input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .footer-actions {
+    width: 100%;
+  }
+
+  .footer-actions > * {
+    flex: 1;
+    justify-content: center;
+  }
 }
 </style>
