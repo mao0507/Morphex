@@ -21,8 +21,11 @@ import { ConvertTuning, MediaKind } from './types';
 
 export interface ConvertOptions {
   inputPath: string;
-  outputPath: string;
-  targetFormatId: string;
+  // 輸出副檔名要等目標格式解析完才知道（壓縮模式沿用來源格式），
+  // 所以也可以給一個「副檔名 → 路徑」的函式
+  outputPath: string | ((ext: string) => string);
+  // 不指定 = 圖片壓縮模式：用來源檔案本身的格式當目標格式
+  targetFormatId?: string;
   tuning?: ConvertTuning;
   onProgress?: (percent: number) => void;
 }
@@ -48,18 +51,18 @@ export interface PreparedConversion {
   plan: EnginePlan;
   inputKind: MediaKind;
   outputFormatId: string;
+  outputPath: string;
 }
 
-export interface ResolvedTargetFormat {
+interface ResolvedTargetFormat {
   targetFormat: FormatDefinition;
   // 順手把讀到的 image metadata 帶出去，prepareConversion 收到就不用重讀一次
   imageMeta?: sharp.Metadata;
 }
 
 // 決定這次轉檔的目標格式：有明確指定就直接查表；圖片壓縮模式（未指定格式）
-// 則用來源檔案本身的格式當目標格式（單純壓縮、不換格式）。呼叫端（API 層）
-// 靠這個結果組出 outputPath 的副檔名，之後才能呼叫 prepareConversion
-export async function resolveTargetFormat(
+// 則用來源檔案本身的格式當目標格式（單純壓縮、不換格式）
+async function resolveTargetFormat(
   inputPath: string,
   requestedFormatId?: string,
 ): Promise<ResolvedTargetFormat> {
@@ -114,38 +117,37 @@ async function chooseEngine(
 }
 
 // 只做驗證 + 組裝轉檔計畫，不真正啟動 ffmpeg/sharp；讓呼叫端能在排入轉檔工作前
-// 先同步取得驗證結果。knownImageMeta 選填，呼叫端如果已經透過 resolveTargetFormat
-// 讀過一次就傳進來，這裡不會再讀第二次
+// 先同步取得驗證結果。目標格式解析、輸出路徑、engine 選擇都在這一步完成
 export async function prepareConversion(
-  options: Omit<ConvertOptions, 'onProgress'> & {
-    knownImageMeta?: sharp.Metadata;
-  },
+  options: Omit<ConvertOptions, 'onProgress'>,
 ): Promise<PreparedConversion> {
-  const targetFormat = getFormatById(options.targetFormatId);
-  if (!targetFormat) {
-    throw new ConversionError(
-      'INVALID_INPUT',
-      `不支援的目標格式：${options.targetFormatId}`,
-    );
-  }
+  const { targetFormat, imageMeta } = await resolveTargetFormat(
+    options.inputPath,
+    options.targetFormatId,
+  );
+  const outputPath =
+    typeof options.outputPath === 'function'
+      ? options.outputPath(targetFormat.ext)
+      : options.outputPath;
   assertTuningSupported(targetFormat, options.tuning);
 
   const { engine } = await chooseEngine(
     options.inputPath,
     targetFormat,
-    options.knownImageMeta,
+    imageMeta,
   );
   if (engine === 'sharp') {
     return {
       plan: {
         engine: 'sharp',
         inputPath: options.inputPath,
-        outputPath: options.outputPath,
+        outputPath,
         targetFormat,
         tuning: options.tuning ?? {},
       },
       inputKind: 'image',
       outputFormatId: targetFormat.id,
+      outputPath,
     };
   }
 
@@ -159,7 +161,7 @@ export async function prepareConversion(
   );
   const args = buildFfmpegArgs(
     options.inputPath,
-    options.outputPath,
+    outputPath,
     inputKind,
     targetFormat,
     options.tuning,
@@ -171,13 +173,14 @@ export async function prepareConversion(
     plan: {
       engine: 'ffmpeg',
       args,
-      outputPath: options.outputPath,
+      outputPath,
       durationSec,
       maxBytes:
         targetSizeMB !== undefined ? targetSizeBytes(targetSizeMB) : undefined,
     },
     inputKind,
     outputFormatId: targetFormat.id,
+    outputPath,
   };
 }
 
