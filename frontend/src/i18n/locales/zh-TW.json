@@ -12,7 +12,42 @@
     }
   },
   "header": {
-    "addFiles": "+ 新增檔案"
+    "addFiles": "+ 新增檔案",
+    "home": "回到首頁"
+  },
+  "landing": {
+    "eyebrow": "免費 · 免註冊 · 批次轉檔",
+    "title": "影片、音訊、圖片，一次轉好",
+    "desc": "拖放檔案、挑選格式，Morphex 幫你轉檔、壓縮、剪輯。轉完下載即刪除，不留任何紀錄。",
+    "cta": {
+      "start": "開始轉換",
+      "video": {
+        "title": "影片 / 音訊",
+        "desc": "轉成 MP4、WebM、MP3 等格式，可調整解析度、幀率、位元率與剪輯範圍。"
+      },
+      "image": {
+        "title": "圖片",
+        "desc": "轉換或壓縮圖片，支援縮放、畫質調整、翻轉與移除中繼資料。"
+      }
+    },
+    "features": {
+      "batch": {
+        "title": "批次佇列",
+        "desc": "一次加入多個檔案，全部轉換、全部下載。"
+      },
+      "tuning": {
+        "title": "進階選項",
+        "desc": "編碼器、CRF、目標大小、音量標準化一應俱全。"
+      },
+      "presets": {
+        "title": "裝置預設",
+        "desc": "iPhone、YouTube、Discord 等常用設定一鍵套用。"
+      },
+      "privacy": {
+        "title": "用完即刪",
+        "desc": "下載後立即刪除，未下載的檔案 30 分鐘後自動清除。"
+      }
+    }
   },
   "tabs": {
     "video": "轉換影片",

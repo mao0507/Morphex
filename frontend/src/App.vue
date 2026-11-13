@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { gsap } from 'gsap'
 import { SUPPORTED_LOCALES, setLocale } from './i18n'
@@ -7,6 +7,7 @@ import { DOWNLOAD_EXPIRED } from './conversion-queue'
 import { isFieldHidden } from './format-fields'
 import { DEVICE_PRESETS, presetState } from './device-presets'
 import { createQueue, formatBytes } from './queue'
+import LandingPage from './LandingPage.vue'
 
 const { t, locale } = useI18n()
 
@@ -90,6 +91,7 @@ const ROTATE_PRESETS = computed(() => [
   { value: '270', label: '270°' },
 ])
 
+const view = ref('landing') // 'landing' | 'tool'
 const formats = ref([])
 const queue = ref([])
 const defaultFormat = ref('')
@@ -157,15 +159,6 @@ onMounted(async () => {
   if (shellRef.value) {
     gsapCtx = gsap.context(() => {
       gsap.from('.site-header', { y: -12, autoAlpha: 0, duration: 0.35, ease: 'power2.out' })
-      gsap.from('.hero-text > *', {
-        y: 10,
-        autoAlpha: 0,
-        duration: 0.35,
-        stagger: 0.06,
-        delay: 0.05,
-        ease: 'power2.out',
-      })
-      gsap.from('.dropzone', { y: 10, autoAlpha: 0, duration: 0.35, delay: 0.1, ease: 'power2.out' })
     }, shellRef.value)
   }
 
@@ -190,6 +183,16 @@ onUnmounted(() => {
   entryQueue.dispose()
   gsapCtx?.revert()
 })
+
+async function enterTool(tab) {
+  activeTab.value = tab
+  view.value = 'tool'
+  await nextTick()
+  gsapCtx?.add(() => {
+    gsap.from('.tabs, .hero-text > *', { y: 10, autoAlpha: 0, duration: 0.35, stagger: 0.06, ease: 'power2.out' })
+    gsap.from('.dropzone', { y: 10, autoAlpha: 0, duration: 0.35, delay: 0.1, ease: 'power2.out' })
+  })
+}
 
 function onCardEnter(el, done) {
   gsap.from(el, { y: -16, autoAlpha: 0, duration: 0.4, ease: 'power2.out', onComplete: done })
@@ -279,13 +282,13 @@ const entryQueue = createQueue({
   <div class="shell" ref="shellRef">
     <header class="site-header">
       <div class="header-inner">
-        <div class="brand-group">
+        <button class="brand-group" type="button" :title="t('header.home')" @click="view = 'landing'">
           <img class="brand-mark" src="/logo.png" alt="Morphex" />
           <span class="brand-name">Morphex</span>
           <span class="beta-tag">BETA</span>
-        </div>
+        </button>
         <div class="header-actions">
-          <button class="btn-outline" type="button" @click="openFilePicker">{{ t('header.addFiles') }}</button>
+          <button v-if="view === 'tool'" class="btn-outline" type="button" @click="openFilePicker">{{ t('header.addFiles') }}</button>
           <div class="lang-select-wrap">
             <select
               class="lang-select"
@@ -305,7 +308,9 @@ const entryQueue = createQueue({
       </div>
     </header>
 
-    <main class="page">
+    <LandingPage v-if="view === 'landing'" :formats="formats" @start="enterTool" />
+
+    <main v-else class="page">
       <div class="tabs" role="tablist">
         <button
           class="tab"
@@ -748,7 +753,7 @@ const entryQueue = createQueue({
       </TransitionGroup>
     </main>
 
-    <footer class="site-footer" v-if="visibleQueue.length">
+    <footer class="site-footer" v-if="view === 'tool' && visibleQueue.length">
       <div class="footer-inner">
         <div class="footer-stats">
           <span class="stat"><span class="status-dot status-dot-done"></span>{{ doneCount }} {{ t('status.done') }}</span>
@@ -799,6 +804,12 @@ const entryQueue = createQueue({
   display: flex;
   align-items: center;
   gap: 11px;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 .brand-mark {

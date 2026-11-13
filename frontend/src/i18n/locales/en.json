@@ -12,7 +12,42 @@
     }
   },
   "header": {
-    "addFiles": "+ Add files"
+    "addFiles": "+ Add files",
+    "home": "Back to home"
+  },
+  "landing": {
+    "eyebrow": "Free · No sign-up · Batch conversion",
+    "title": "Video, audio and images, converted in one go",
+    "desc": "Drop your files, pick a format, and Morphex converts, compresses and trims them. Files are deleted right after download — nothing is kept.",
+    "cta": {
+      "start": "Start converting",
+      "video": {
+        "title": "Video / Audio",
+        "desc": "Convert to MP4, WebM, MP3 and more, with control over resolution, frame rate, bitrate and trim range."
+      },
+      "image": {
+        "title": "Image",
+        "desc": "Convert or compress images, with scaling, quality, flipping and metadata removal."
+      }
+    },
+    "features": {
+      "batch": {
+        "title": "Batch queue",
+        "desc": "Add many files at once, then convert all and download all."
+      },
+      "tuning": {
+        "title": "Advanced options",
+        "desc": "Codecs, CRF, target size, loudness normalization and more."
+      },
+      "presets": {
+        "title": "Device presets",
+        "desc": "One-click settings for iPhone, YouTube, Discord and others."
+      },
+      "privacy": {
+        "title": "Deleted after use",
+        "desc": "Deleted as soon as you download; undownloaded files are cleared after 30 minutes."
+      }
+    }
   },
   "tabs": {
     "video": "Convert Video",
