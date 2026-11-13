@@ -80,6 +80,22 @@ describe('conversion queue', () => {
     expect(sent).not.toHaveProperty('sampleRate')
   })
 
+  it('欄位支不支援跟著選的影片編碼變：選了就查該編碼的清單', async () => {
+    const fetch = vi.fn().mockResolvedValue(json(202, { id: 'j1', status: 'processing', progress: 0 }))
+    const formats = [{ id: 'avi', unsupportedFields: ['crf'], unsupportedFieldsByVideoCodec: { h264: [], copy: ['crf', 'rotate'] } }]
+    const queue = createConversionQueue({ fetch, apiBase: API, saveBlob: vi.fn(), getFormats: () => formats })
+    const sentWith = async (videoCodec) => {
+      const entry = { ...makeEntry(), format: 'avi', tuning: { crf: '20', rotate: '90', videoCodec } }
+      await queue.start(entry)
+      queue.stop(entry)
+      return Object.fromEntries(fetch.mock.calls.at(-1)[1].body.entries())
+    }
+
+    expect(await sentWith('')).not.toHaveProperty('crf')
+    expect(await sentWith('h264')).toMatchObject({ crf: '20', rotate: '90' })
+    expect(await sentWith('copy')).not.toHaveProperty('rotate')
+  })
+
   it('填了目標大小就不送影片位元率與 CRF（後端視為互斥）', async () => {
     const fetch = fakeBackend({ '/convert': json(202, { id: 'j1', status: 'processing', progress: 0 }) })
     const queue = createConversionQueue({ fetch, apiBase: API, saveBlob: vi.fn(), getFormats: () => [{ id: 'mp4', unsupportedFields: [] }] })

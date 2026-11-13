@@ -6,6 +6,8 @@ Morphex 的領域用語。命名 module、寫文件或討論架構時使用這�
 
 **Queue Entry**：前端佇列裡的一個檔案。帶著加入時所在的分頁（`kind`：`video` 或 `image`，之後不再用 MIME 重猜）、自己的 format、tuning、狀態（`idle → queued → processing → done → downloaded`，任一步可進 `error`），轉換時對應一個 Job。狀態只由 `frontend/src/conversion-queue.js` 改寫。
 
+**Queue**：前端佇列本身，`frontend/src/queue.js`。Queue Entry 的建立、設定變更（壓縮模式、Device preset、套用到全部）、移除、轉換與下載都只從這裡走；`App.vue` 只渲染。
+
 **One-shot download**：Job 的 output 只能下載一次——串流結束後後端立刻刪檔。前端因此在下載成功後把 Queue Entry 轉成 `downloaded`，不再提供下載。
 
 **Error code**：`ConversionError` 的 `code`（`INVALID_INPUT`、`UNSUPPORTED_COMBINATION`、`PROBE_FAILED`、`FFMPEG_FAILED`、`TIMEOUT`、`IMAGE_CONVERT_FAILED`、`TARGET_SIZE_EXCEEDED`）。同步失敗（`POST /convert` 的 4xx/5xx body）與非同步失敗（status 的 `error` 欄位）都是 `{ code, message }`。前端另有 `DOWNLOAD_EXPIRED`。

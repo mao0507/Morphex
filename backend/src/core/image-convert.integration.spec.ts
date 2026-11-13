@@ -3,7 +3,7 @@ import { spawnSync } from 'child_process';
 import { mkdtempSync, existsSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { convertFile, resolveTargetFormat } from './convert';
+import { convertFile, prepareConversion } from './convert';
 import { ConversionError } from './errors';
 import { FFMPEG_PATH } from './ffmpeg-binaries';
 import { formatIdForSharpFormat } from './image-convert';
@@ -147,32 +147,40 @@ describe('convertFile - 圖片 pipeline（整合測試）', () => {
     expect(formatIdForSharpFormat('heif')).toBeUndefined();
   });
 
-  describe('resolveTargetFormat（深模組介面測試）', () => {
-    it('有帶 format：直接查表，不讀 image metadata', async () => {
+  describe('prepareConversion 解析目標格式', () => {
+    const outputPathFor = (ext: string) => join(workDir, `resolved.${ext}`);
+    const prepare = (inputPath: string, targetFormatId?: string) =>
+      prepareConversion({
+        inputPath,
+        outputPath: outputPathFor,
+        targetFormatId,
+      });
+
+    it('有帶 format：用該格式，輸出路徑拿到它的副檔名', async () => {
       const inputPath = join(workDir, 'resolve-explicit.jpg');
       await generateSampleImage(inputPath);
 
-      const resolved = await resolveTargetFormat(inputPath, 'webp');
+      const prepared = await prepare(inputPath, 'webp');
 
-      expect(resolved.targetFormat.id).toBe('webp');
-      expect(resolved.imageMeta).toBeUndefined();
+      expect(prepared.outputFormatId).toBe('webp');
+      expect(prepared.outputPath).toBe(outputPathFor('webp'));
     });
 
-    it('沒帶 format＋圖片：用來源格式自動當目標格式，回傳讀到的 imageMeta 供重用', async () => {
+    it('沒帶 format＋圖片：用來源格式自動當目標格式', async () => {
       const inputPath = join(workDir, 'resolve-compress.jpg');
       await generateSampleImage(inputPath);
 
-      const resolved = await resolveTargetFormat(inputPath);
+      const prepared = await prepare(inputPath);
 
-      expect(resolved.targetFormat.id).toBe('jpg');
-      expect(resolved.imageMeta?.format).toBe('jpeg');
+      expect(prepared.outputFormatId).toBe('jpg');
+      expect(prepared.outputPath).toBe(outputPathFor('jpg'));
     });
 
     it('沒帶 format＋非圖片檔案：丟出 ConversionError(INVALID_INPUT)', async () => {
       const inputPath = join(workDir, 'resolve-video.mp4');
       generateSampleVideo(inputPath);
 
-      await expect(resolveTargetFormat(inputPath)).rejects.toMatchObject({
+      await expect(prepare(inputPath)).rejects.toMatchObject({
         code: 'INVALID_INPUT',
       });
     });
@@ -191,7 +199,7 @@ describe('convertFile - 圖片 pipeline（整合測試）', () => {
       ]);
       expect(result.status).toBe(0);
 
-      await expect(resolveTargetFormat(inputPath)).rejects.toMatchObject({
+      await expect(prepare(inputPath)).rejects.toMatchObject({
         code: 'INVALID_INPUT',
       });
     });
@@ -200,9 +208,9 @@ describe('convertFile - 圖片 pipeline（整合測試）', () => {
       const inputPath = join(workDir, 'resolve-bad-format.jpg');
       await generateSampleImage(inputPath);
 
-      await expect(
-        resolveTargetFormat(inputPath, 'does-not-exist'),
-      ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+      await expect(prepare(inputPath, 'does-not-exist')).rejects.toMatchObject({
+        code: 'INVALID_INPUT',
+      });
     });
   });
 
