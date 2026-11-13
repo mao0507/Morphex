@@ -40,18 +40,18 @@ onUnmounted(() => gsapCtx?.revert())
     </section>
 
     <section class="landing-cards">
-      <button class="landing-card" type="button" @click="emit('start', 'video')">
-        <span class="card-icon">▶</span>
-        <span class="card-title">{{ t('landing.cta.video.title') }}</span>
-        <span class="card-desc">{{ t('landing.cta.video.desc') }}</span>
-        <span class="card-exts" v-if="mediaExts.length">{{ mediaExts.slice(0, 10).join(' · ') }}</span>
-        <span class="card-go">{{ t('landing.cta.start') }} →</span>
-      </button>
       <button class="landing-card" type="button" @click="emit('start', 'image')">
         <span class="card-icon">◩</span>
         <span class="card-title">{{ t('landing.cta.image.title') }}</span>
         <span class="card-desc">{{ t('landing.cta.image.desc') }}</span>
         <span class="card-exts" v-if="imageExts.length">{{ imageExts.join(' · ') }}</span>
+        <span class="card-go">{{ t('landing.cta.start') }} →</span>
+      </button>
+      <button class="landing-card" type="button" @click="emit('start', 'video')">
+        <span class="card-icon">▶</span>
+        <span class="card-title">{{ t('landing.cta.video.title') }}</span>
+        <span class="card-desc">{{ t('landing.cta.video.desc') }}</span>
+        <span class="card-exts" v-if="mediaExts.length">{{ mediaExts.slice(0, 10).join(' · ') }}</span>
         <span class="card-go">{{ t('landing.cta.start') }} →</span>
       </button>
     </section>

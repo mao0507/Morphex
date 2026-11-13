@@ -96,7 +96,7 @@ const formats = ref([])
 const queue = ref([])
 const defaultFormat = ref('')
 const defaultImageFormat = ref('')
-const activeTab = ref('video') // 'video' | 'image'
+const activeTab = ref('image') // 'image' | 'video'
 const rejectionNotice = ref('')
 const isDragging = ref(false)
 const theme = ref(localStorage.getItem('morphex-theme') || systemTheme())
@@ -316,21 +316,21 @@ const entryQueue = createQueue({
           class="tab"
           type="button"
           role="tab"
-          :class="{ active: activeTab === 'video' }"
-          :aria-selected="activeTab === 'video'"
-          @click="activeTab = 'video'"
-        >
-          {{ t('tabs.video') }}
-        </button>
-        <button
-          class="tab"
-          type="button"
-          role="tab"
           :class="{ active: activeTab === 'image' }"
           :aria-selected="activeTab === 'image'"
           @click="activeTab = 'image'"
         >
           {{ t('tabs.image') }}
+        </button>
+        <button
+          class="tab"
+          type="button"
+          role="tab"
+          :class="{ active: activeTab === 'video' }"
+          :aria-selected="activeTab === 'video'"
+          @click="activeTab = 'video'"
+        >
+          {{ t('tabs.video') }}
         </button>
       </div>
 
