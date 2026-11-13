@@ -1,4 +1,6 @@
 import { ConversionError } from '../core/errors';
+import { AUDIO_CODEC_MAP } from '../core/ffmpeg-args';
+import { VIDEO_CODEC_MAP } from '../core/formats';
 import {
   AudioCodecChoice,
   ConvertTuning,
@@ -6,54 +8,9 @@ import {
   VideoCodecChoice,
 } from '../core/types';
 
-// multipart/form-data 一律以字串送達（同名欄位重複時 multer 會給陣列），這裡負責解析
-export interface ConvertRequestBody {
-  format?: string;
-  resolution?: string;
-  frameRate?: string;
-  videoBitrate?: string;
-  audioBitrate?: string;
-  trimStart?: string;
-  trimEnd?: string;
-  normalizeAudio?: string;
-  stripMetadata?: string;
-  videoCodec?: string;
-  audioCodec?: string;
-  crf?: string;
-  preset?: string;
-  audioChannels?: string;
-  sampleRate?: string;
-  rotate?: string;
-  flipHorizontal?: string;
-  flipVertical?: string;
-  speed?: string;
-  deinterlace?: string;
-  denoise?: string;
-  brightness?: string;
-  contrast?: string;
-  saturation?: string;
-  quality?: string;
-  repair?: string;
-  targetSize?: string;
-}
-
 const RESOLUTION_RE = /^\d+x\d+$/;
-const VIDEO_CODECS: VideoCodecChoice[] = [
-  'h264',
-  'h265',
-  'vp9',
-  'av1',
-  'mpeg4',
-  'copy',
-];
-const AUDIO_CODECS: AudioCodecChoice[] = [
-  'aac',
-  'mp3',
-  'opus',
-  'flac',
-  'vorbis',
-  'copy',
-];
+const VIDEO_CODECS = Object.keys(VIDEO_CODEC_MAP) as VideoCodecChoice[];
+const AUDIO_CODECS = Object.keys(AUDIO_CODEC_MAP) as AudioCodecChoice[];
 const PRESETS: FfmpegPreset[] = [
   'ultrafast',
   'superfast',
@@ -68,12 +25,11 @@ const PRESETS: FfmpegPreset[] = [
 const ROTATIONS = [90, 180, 270] as const;
 const AUDIO_CHANNEL_CHOICES = [1, 2];
 
-type Field = keyof ConvertRequestBody;
 type Parser<T> = (raw: string) => T | undefined;
 
 // 空字串/未提供 = 使用預設值；有值卻不合法就直接回 INVALID_INPUT，
 // 不靜默丟掉——否則使用者的設定會悄悄失效
-function invalid(field: Field): never {
+function invalid(field: string): never {
   throw new ConversionError('INVALID_INPUT', `無效的參數：${field}`);
 }
 
@@ -104,72 +60,73 @@ const oneOf =
 const flag: Parser<boolean> = (raw) =>
   raw === 'true' ? true : raw === 'false' ? false : undefined;
 
-// ConvertTuning 欄位 → multipart 欄位名；/formats 回報不支援的欄位時用前端認得的名字
-export const REQUEST_FIELD_BY_TUNING_KEY: Record<keyof ConvertTuning, Field> = {
-  resolution: 'resolution',
-  frameRateFps: 'frameRate',
-  videoBitrateKbps: 'videoBitrate',
-  audioBitrateKbps: 'audioBitrate',
-  trimStartSec: 'trimStart',
-  trimEndSec: 'trimEnd',
-  normalizeAudio: 'normalizeAudio',
-  stripMetadata: 'stripMetadata',
-  videoCodec: 'videoCodec',
-  audioCodec: 'audioCodec',
-  crf: 'crf',
-  preset: 'preset',
-  audioChannels: 'audioChannels',
-  sampleRateHz: 'sampleRate',
-  rotate: 'rotate',
-  flipHorizontal: 'flipHorizontal',
-  flipVertical: 'flipVertical',
-  speed: 'speed',
-  deinterlace: 'deinterlace',
-  denoise: 'denoise',
-  brightness: 'brightness',
-  contrast: 'contrast',
-  saturation: 'saturation',
-  quality: 'quality',
-  repair: 'repair',
-  targetSizeMB: 'targetSize',
+const resolution: Parser<string> = (raw) =>
+  RESOLUTION_RE.test(raw) ? raw : undefined;
+
+// 每個 tuning 欄位的唯一定義：multipart 欄位名 + 怎麼解析。request body 型別、
+// 欄位名對照表、parseConvertRequest 都從這張表衍生；型別會逼新欄位在這裡補一列
+const TUNING_FIELDS = {
+  resolution: { field: 'resolution', parse: resolution },
+  frameRateFps: { field: 'frameRate', parse: positive },
+  videoBitrateKbps: { field: 'videoBitrate', parse: positive },
+  audioBitrateKbps: { field: 'audioBitrate', parse: positive },
+  trimStartSec: { field: 'trimStart', parse: nonNegative },
+  trimEndSec: { field: 'trimEnd', parse: positive },
+  normalizeAudio: { field: 'normalizeAudio', parse: flag },
+  stripMetadata: { field: 'stripMetadata', parse: flag },
+  videoCodec: { field: 'videoCodec', parse: oneOf(VIDEO_CODECS) },
+  audioCodec: { field: 'audioCodec', parse: oneOf(AUDIO_CODECS) },
+  crf: { field: 'crf', parse: numberIn(0, 51) },
+  preset: { field: 'preset', parse: oneOf(PRESETS) },
+  audioChannels: {
+    field: 'audioChannels',
+    parse: oneOf(AUDIO_CHANNEL_CHOICES),
+  },
+  sampleRateHz: { field: 'sampleRate', parse: positive },
+  rotate: { field: 'rotate', parse: oneOf(ROTATIONS) },
+  flipHorizontal: { field: 'flipHorizontal', parse: flag },
+  flipVertical: { field: 'flipVertical', parse: flag },
+  speed: { field: 'speed', parse: numberIn(0.25, 4) },
+  deinterlace: { field: 'deinterlace', parse: flag },
+  denoise: { field: 'denoise', parse: flag },
+  brightness: { field: 'brightness', parse: numberIn(-1, 1) },
+  contrast: { field: 'contrast', parse: numberIn(0, 2) },
+  saturation: { field: 'saturation', parse: numberIn(0, 3) },
+  quality: { field: 'quality', parse: numberIn(1, 100) },
+  repair: { field: 'repair', parse: flag },
+  targetSizeMB: { field: 'targetSize', parse: positive },
+} as const satisfies {
+  [K in keyof ConvertTuning]-?: {
+    field: string;
+    parse: Parser<NonNullable<ConvertTuning[K]>>;
+  };
 };
+
+type TuningKey = keyof typeof TUNING_FIELDS;
+type Field = 'format' | (typeof TUNING_FIELDS)[TuningKey]['field'];
+const TUNING_KEYS = Object.keys(TUNING_FIELDS) as TuningKey[];
+
+// multipart/form-data 一律以字串送達（同名欄位重複時 multer 會給陣列，read 會擋掉）
+export type ConvertRequestBody = Partial<Record<Field, string>>;
+
+// ConvertTuning 欄位 → multipart 欄位名；/formats 回報不支援的欄位時用前端認得的名字
+export const REQUEST_FIELD_BY_TUNING_KEY = Object.fromEntries(
+  TUNING_KEYS.map((key) => [key, TUNING_FIELDS[key].field]),
+) as Record<keyof ConvertTuning, Exclude<Field, 'format'>>;
 
 export function parseConvertRequest(body: ConvertRequestBody): {
   targetFormatId?: string;
   tuning: ConvertTuning;
 } {
-  const on = (field: Field) => read(body, field, flag) || undefined;
+  const tuning: Record<string, unknown> = {};
+  for (const key of TUNING_KEYS) {
+    const { field, parse } = TUNING_FIELDS[key];
+    const value = read<unknown>(body, field, parse);
+    // 開關送 'false' 等同沒送：undefined 才代表「用預設值」
+    tuning[key] = value === false ? undefined : value;
+  }
   return {
     targetFormatId: read(body, 'format', (raw) => raw),
-    tuning: {
-      resolution: read(body, 'resolution', (raw) =>
-        RESOLUTION_RE.test(raw) ? raw : undefined,
-      ),
-      frameRateFps: read(body, 'frameRate', positive),
-      videoBitrateKbps: read(body, 'videoBitrate', positive),
-      audioBitrateKbps: read(body, 'audioBitrate', positive),
-      trimStartSec: read(body, 'trimStart', nonNegative),
-      trimEndSec: read(body, 'trimEnd', positive),
-      normalizeAudio: on('normalizeAudio'),
-      stripMetadata: on('stripMetadata'),
-      videoCodec: read(body, 'videoCodec', oneOf(VIDEO_CODECS)),
-      audioCodec: read(body, 'audioCodec', oneOf(AUDIO_CODECS)),
-      crf: read(body, 'crf', numberIn(0, 51)),
-      preset: read(body, 'preset', oneOf(PRESETS)),
-      audioChannels: read(body, 'audioChannels', oneOf(AUDIO_CHANNEL_CHOICES)),
-      sampleRateHz: read(body, 'sampleRate', positive),
-      rotate: read(body, 'rotate', oneOf(ROTATIONS)),
-      flipHorizontal: on('flipHorizontal'),
-      flipVertical: on('flipVertical'),
-      speed: read(body, 'speed', numberIn(0.25, 4)),
-      deinterlace: on('deinterlace'),
-      denoise: on('denoise'),
-      brightness: read(body, 'brightness', numberIn(-1, 1)),
-      contrast: read(body, 'contrast', numberIn(0, 2)),
-      saturation: read(body, 'saturation', numberIn(0, 3)),
-      quality: read(body, 'quality', numberIn(1, 100)),
-      repair: on('repair'),
-      targetSizeMB: read(body, 'targetSize', positive),
-    },
+    tuning,
   };
 }

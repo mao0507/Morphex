@@ -7,7 +7,7 @@ import {
 import { ConversionError } from './errors';
 import { assertTuningSupported, VIDEO_CODEC_MAP } from './formats';
 
-const AUDIO_CODEC_MAP: Record<AudioCodecChoice, string> = {
+export const AUDIO_CODEC_MAP: Record<AudioCodecChoice, string> = {
   aac: 'aac',
   mp3: 'libmp3lame',
   opus: 'libopus',
