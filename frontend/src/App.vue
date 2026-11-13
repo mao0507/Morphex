@@ -3,10 +3,10 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { gsap } from 'gsap'
 import { SUPPORTED_LOCALES, setLocale } from './i18n'
-import { createConversionQueue, DOWNLOAD_EXPIRED } from './conversion-queue'
-import { acceptsFile } from './file-intake'
+import { DOWNLOAD_EXPIRED } from './conversion-queue'
 import { isFieldHidden } from './format-fields'
-import { DEVICE_PRESETS, applyPreset, emptyTuning, presetState } from './device-presets'
+import { DEVICE_PRESETS, presetState } from './device-presets'
+import { createQueue, formatBytes } from './queue'
 
 const { t, locale } = useI18n()
 
@@ -101,7 +101,6 @@ const theme = ref(localStorage.getItem('morphex-theme') || systemTheme())
 const fileInputRef = ref(null)
 const shellRef = ref(null)
 
-let localIdCounter = 0
 let gsapCtx
 let rejectionTimer = null
 
@@ -141,18 +140,6 @@ function toggleTheme() {
   applyTheme()
 }
 
-function formatBytes(bytes) {
-  if (!bytes) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB']
-  let n = bytes
-  let i = 0
-  while (n >= 1024 && i < units.length - 1) {
-    n /= 1024
-    i++
-  }
-  return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
-}
-
 function extOf(entry) {
   const parts = entry.name.split('.')
   return parts.length > 1 ? parts.pop().toUpperCase() : ''
@@ -162,13 +149,6 @@ function extOf(entry) {
 // 放進影音分頁的 GIF 都會留在原本的分頁、用對應的設定面板
 function isImageEntry(entry) {
   return entry.kind === 'image'
-}
-
-// 縮圖只看瀏覽器能不能直接顯示：影音分頁的 GIF 也用圖片元素預覽
-function thumbKind(file, kind) {
-  if (kind === 'image' || file.type.startsWith('image/')) return 'image'
-  if (file.type.startsWith('video/')) return 'video'
-  return 'audio'
 }
 
 onMounted(async () => {
@@ -207,10 +187,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  for (const entry of queue.value) {
-    conversionQueue.stop(entry)
-    if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
-  }
+  entryQueue.dispose()
   gsapCtx?.revert()
 })
 
@@ -222,40 +199,12 @@ function onCardLeave(el, done) {
   gsap.to(el, { x: 24, autoAlpha: 0, duration: 0.28, ease: 'power1.in', onComplete: done })
 }
 
-function makeEntry(file, formatId, kind) {
-  localIdCounter += 1
-  const thumb = thumbKind(file, kind)
-  return {
-    localId: `f${localIdCounter}`,
-    file,
-    kind,
-    thumb,
-    // 只有圖片/影片會顯示縮圖，音訊不建 blob URL
-    previewUrl: thumb === 'audio' ? null : URL.createObjectURL(file),
-    name: file.name,
-    sizeLabel: formatBytes(file.size),
-    format: formatId,
-    compressMode: false,
-    settingsOpen: false,
-    preset: null,
-    tuning: emptyTuning(),
-    status: 'idle',
-    progress: 0,
-    jobId: null,
-    downloadUrl: null,
-    errorCode: null,
-  }
-}
-
 function addFiles(fileList) {
-  const tab = activeTab.value
-  const isImageTab = tab === 'image'
-  const all = Array.from(fileList)
-  const accepted = all.filter((file) => acceptsFile(file, tab, formats.value))
+  const isImageTab = activeTab.value === 'image'
   const initialFormat = isImageTab ? defaultImageFormat.value : defaultFormat.value
-  queue.value.push(...accepted.map((file) => makeEntry(file, initialFormat, tab)))
+  const rejected = entryQueue.add(fileList, activeTab.value, initialFormat)
 
-  if (accepted.length < all.length) {
+  if (rejected > 0) {
     rejectionNotice.value = isImageTab ? t('notice.skippedNonImage') : t('notice.skippedNonMedia')
     clearTimeout(rejectionTimer)
     rejectionTimer = setTimeout(() => {
@@ -284,50 +233,11 @@ function applyFormatToIdle(formatId) {
   } else {
     defaultFormat.value = formatId
   }
-  for (const entry of visibleQueue.value) {
-    if (entry.status === 'idle') entry.format = formatId
-  }
+  entryQueue.setFormatForIdle(activeTab.value, formatId)
 }
 
 function toggleSettings(entry) {
   entry.settingsOpen = !entry.settingsOpen
-}
-
-const DEFAULT_COMPRESS_QUALITY = '80'
-
-// 壓縮模式：不換格式，只是把檔案變小；開啟時不送 format 給後端，後端會自動用
-// 來源格式當目標格式。第一次開啟且使用者還沒動過畫質滑桿時帶入預設值，
-// 不然滑桿空白等於「不壓縮」，跟「壓縮模式」這個功能名稱矛盾
-function toggleCompressMode(entry) {
-  entry.compressMode = !entry.compressMode
-  if (entry.compressMode && !entry.tuning.quality) {
-    entry.tuning.quality = DEFAULT_COMPRESS_QUALITY
-  }
-}
-
-// entry 物件本身是 conversion queue 的 key，只能把新值寫回去，不能換成新物件
-function selectPreset(entry, presetId) {
-  const next = applyPreset(entry, presetId)
-  entry.preset = next.preset
-  entry.format = next.format
-  entry.tuning = next.tuning
-}
-
-function applyTuningToAll(entry) {
-  // 圖片跟影音的進階選項語意完全不同（CRF/位元率 vs 縮放/畫質），
-  // 只套用到同一種類型的檔案，避免把不相干的設定塞進另一分頁的檔案
-  for (const other of queue.value) {
-    if (other.localId === entry.localId) continue
-    if (other.kind !== entry.kind) continue
-    other.tuning = { ...entry.tuning }
-    other.preset = entry.preset
-  }
-}
-
-function removeEntry(entry) {
-  conversionQueue.stop(entry)
-  if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
-  queue.value = queue.value.filter((e) => e.localId !== entry.localId)
 }
 
 const KNOWN_ERROR_CODES = ['INVALID_INPUT', 'UNSUPPORTED_COMBINATION', 'PROBE_FAILED', 'FFMPEG_FAILED', 'TIMEOUT', 'IMAGE_CONVERT_FAILED', 'TARGET_SIZE_EXCEEDED']
@@ -354,23 +264,15 @@ function pulseCard(entry) {
   if (card) gsap.fromTo(card, { scale: 1 }, { scale: 1.015, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' })
 }
 
-const conversionQueue = createConversionQueue({
+// Queue Entry 的建立、變更、轉換與下載都在 queue.js；這裡只接 UI
+const entryQueue = createQueue({
+  entries: queue.value,
   fetch,
   apiBase: API_BASE,
   saveBlob,
   onDone: pulseCard,
   getFormats: () => formats.value,
 })
-
-function convertAll() {
-  for (const entry of visibleQueue.value) {
-    if (entry.status === 'idle' || entry.status === 'error') conversionQueue.start(entry)
-  }
-}
-
-function downloadAll() {
-  for (const entry of visibleQueue.value) conversionQueue.download(entry)
-}
 </script>
 
 <template>
@@ -578,7 +480,7 @@ function downloadAll() {
             <div class="status-zone">
               <template v-if="entry.status === 'done'">
                 <span class="status-chip status-chip-done">✓ {{ t('status.done') }}</span>
-                <button class="btn-solid" type="button" @click="conversionQueue.download(entry)">↓ {{ t('queue.download') }}</button>
+                <button class="btn-solid" type="button" @click="entryQueue.download(entry)">↓ {{ t('queue.download') }}</button>
               </template>
               <template v-else-if="entry.status === 'downloaded'">
                 <span class="status-chip status-chip-done">✓ {{ t('status.downloaded') }}</span>
@@ -599,11 +501,11 @@ function downloadAll() {
               </template>
               <template v-else-if="entry.status === 'error'">
                 <span class="status-chip status-chip-error">{{ errorLabel(entry.errorCode) }}</span>
-                <button class="btn-solid" type="button" @click="conversionQueue.start(entry)">{{ t('queue.retry') }}</button>
+                <button class="btn-solid" type="button" @click="entryQueue.start(entry)">{{ t('queue.retry') }}</button>
               </template>
               <template v-else>
                 <span class="status-chip status-chip-idle"><span class="status-dot"></span>{{ t('status.idle') }}</span>
-                <button class="btn-solid" type="button" @click="conversionQueue.start(entry)">{{ t('queue.convert') }}</button>
+                <button class="btn-solid" type="button" @click="entryQueue.start(entry)">{{ t('queue.convert') }}</button>
               </template>
             </div>
 
@@ -611,7 +513,7 @@ function downloadAll() {
               <button class="icon-btn" type="button" :title="t('queue.settingsTitle')" @click="toggleSettings(entry)">
                 {{ entry.settingsOpen ? '⌃' : '⌄' }}
               </button>
-              <button class="icon-btn icon-btn-remove" type="button" :title="t('queue.removeTitle')" @click="removeEntry(entry)">✕</button>
+              <button class="icon-btn icon-btn-remove" type="button" :title="t('queue.removeTitle')" @click="entryQueue.remove(entry)">✕</button>
             </div>
           </div>
 
@@ -635,7 +537,7 @@ function downloadAll() {
                   <input
                     type="checkbox"
                     :checked="entry.compressMode"
-                    @change="toggleCompressMode(entry)"
+                    @change="entryQueue.toggleCompressMode(entry)"
                     class="visually-hidden"
                   />
                   <span class="toggle-track" :class="{ on: entry.compressMode }"><span class="toggle-knob"></span></span>
@@ -660,7 +562,7 @@ function downloadAll() {
             </div>
 
             <div class="settings-footer">
-              <button class="btn-text" type="button" @click="applyTuningToAll(entry)">{{ t('queue.applyToAll') }}</button>
+              <button class="btn-text" type="button" @click="entryQueue.applyTuningToAll(entry)">{{ t('queue.applyToAll') }}</button>
               <button class="btn-accent-soft" type="button" @click="toggleSettings(entry)">{{ t('queue.saveSettings') }}</button>
             </div>
           </div>
@@ -670,7 +572,7 @@ function downloadAll() {
               <label class="settings-field settings-field-wide">
                 <span class="settings-label">{{ t('settings.devicePreset') }}</span>
                 <div class="select-wrap">
-                  <select class="settings-select" :value="presetState(entry)" @change="selectPreset(entry, $event.target.value)">
+                  <select class="settings-select" :value="presetState(entry)" @change="entryQueue.selectPreset(entry, $event.target.value)">
                     <option value="">{{ t('devicePresets.none') }}</option>
                     <option v-for="p in DEVICE_PRESETS" :key="p.id" :value="p.id">{{ t(`devicePresets.${p.id}`) }}</option>
                     <option v-if="presetState(entry) === 'custom'" value="custom" disabled>{{ t('devicePresets.custom') }}</option>
@@ -838,7 +740,7 @@ function downloadAll() {
             </div>
 
             <div class="settings-footer">
-              <button class="btn-text" type="button" @click="applyTuningToAll(entry)">{{ t('queue.applyToAll') }}</button>
+              <button class="btn-text" type="button" @click="entryQueue.applyTuningToAll(entry)">{{ t('queue.applyToAll') }}</button>
               <button class="btn-accent-soft" type="button" @click="toggleSettings(entry)">{{ t('queue.saveSettings') }}</button>
             </div>
           </div>
@@ -855,8 +757,8 @@ function downloadAll() {
           <span class="stat stat-error" v-if="errorCount"><span class="status-dot status-dot-error"></span>{{ errorCount }} {{ t('status.error') }}</span>
         </div>
         <div class="footer-actions">
-          <button class="btn-outline" type="button" :disabled="!hasDone" @click="downloadAll">{{ t('footer.downloadAll') }}</button>
-          <button class="btn-solid" type="button" :disabled="!hasIdleOrError" @click="convertAll">
+          <button class="btn-outline" type="button" :disabled="!hasDone" @click="entryQueue.downloadAll(activeTab)">{{ t('footer.downloadAll') }}</button>
+          <button class="btn-solid" type="button" :disabled="!hasIdleOrError" @click="entryQueue.convertAll(activeTab)">
             {{ t('footer.convertAll') }}<span class="count-badge">{{ pendingCount }}</span>
           </button>
         </div>
