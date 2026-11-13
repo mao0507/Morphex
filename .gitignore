@@ -22,3 +22,6 @@ src-tauri/gen/
 
 # Git Bash 當機傾印
 *.stackdump
+
+# codegraph 本機索引
+.codegraph/
