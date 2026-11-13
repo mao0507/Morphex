@@ -641,17 +641,17 @@ function downloadAll() {
                   <span class="toggle-track" :class="{ on: entry.compressMode }"><span class="toggle-knob"></span></span>
                   {{ t('settings.compressMode') }}
                 </label>
-                <label class="toggle">
+                <label class="toggle" v-if="!isFieldHidden(formats, entry, 'stripMetadata')">
                   <input type="checkbox" v-model="entry.tuning.stripMetadata" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.stripMetadata }"><span class="toggle-knob"></span></span>
                   {{ t('settings.stripMetadata') }}
                 </label>
-                <label class="toggle">
+                <label class="toggle" v-if="!isFieldHidden(formats, entry, 'flipHorizontal')">
                   <input type="checkbox" v-model="entry.tuning.flipHorizontal" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.flipHorizontal }"><span class="toggle-knob"></span></span>
                   {{ t('settings.flipHorizontal') }}
                 </label>
-                <label class="toggle">
+                <label class="toggle" v-if="!isFieldHidden(formats, entry, 'flipVertical')">
                   <input type="checkbox" v-model="entry.tuning.flipVertical" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.flipVertical }"><span class="toggle-knob"></span></span>
                   {{ t('settings.flipVertical') }}
@@ -678,7 +678,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'resolution')">
                 <span class="settings-label">{{ t('settings.resolution') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.resolution">
@@ -687,7 +687,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'frameRate')">
                 <span class="settings-label">{{ t('settings.frameRate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.frameRate">
@@ -715,7 +715,7 @@ function downloadAll() {
                 <input class="settings-input" type="number" min="0.1" step="0.1" :placeholder="t('presets.auto')" v-model="entry.tuning.targetSize" />
               </label>
 
-              <div class="settings-field settings-field-wide">
+              <div class="settings-field settings-field-wide" v-if="!isFieldHidden(formats, entry, 'trimStart')">
                 <span class="settings-label">{{ t('settings.trimRange') }}</span>
                 <div class="trim-row">
                   <input class="settings-input trim-input" type="number" min="0" :placeholder="t('settings.trimStartPlaceholder')" v-model="entry.tuning.trimStart" />
@@ -724,7 +724,7 @@ function downloadAll() {
                 </div>
               </div>
 
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'videoCodec')">
                 <span class="settings-label">{{ t('settings.videoCodec') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.videoCodec">
@@ -733,7 +733,7 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'audioCodec')">
                 <span class="settings-label">{{ t('settings.audioCodec') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.audioCodec">
@@ -775,7 +775,7 @@ function downloadAll() {
                 </div>
               </label>
 
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'rotate')">
                 <span class="settings-label">{{ t('settings.rotate') }}</span>
                 <div class="select-wrap">
                   <select class="settings-select" v-model="entry.tuning.rotate">
@@ -784,12 +784,12 @@ function downloadAll() {
                   <span class="select-arrow">▼</span>
                 </div>
               </label>
-              <label class="settings-field">
+              <label class="settings-field" v-if="!isFieldHidden(formats, entry, 'speed')">
                 <span class="settings-label">{{ t('settings.speed') }}</span>
                 <input class="settings-input" type="number" min="0.25" max="4" step="0.1" placeholder="1.0" v-model="entry.tuning.speed" />
               </label>
 
-              <div class="settings-field settings-field-wide">
+              <div class="settings-field settings-field-wide" v-if="!isFieldHidden(formats, entry, 'brightness')">
                 <span class="settings-label">{{ t('settings.imageAdjust') }}</span>
                 <div class="trim-row">
                   <input class="settings-input trim-input" type="number" min="-1" max="1" step="0.1" :placeholder="t('settings.brightnessPlaceholder')" v-model="entry.tuning.brightness" />
@@ -799,37 +799,37 @@ function downloadAll() {
               </div>
 
               <div class="settings-field settings-field-wide settings-toggles">
-                <label class="toggle">
+                <label class="toggle" v-if="!isFieldHidden(formats, entry, 'normalizeAudio')">
                   <input type="checkbox" v-model="entry.tuning.normalizeAudio" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.normalizeAudio }"><span class="toggle-knob"></span></span>
                   {{ t('settings.normalizeAudio') }}
                 </label>
-                <label class="toggle">
+                <label class="toggle" v-if="!isFieldHidden(formats, entry, 'stripMetadata')">
                   <input type="checkbox" v-model="entry.tuning.stripMetadata" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.stripMetadata }"><span class="toggle-knob"></span></span>
                   {{ t('settings.stripMetadata') }}
                 </label>
-                <label class="toggle">
+                <label class="toggle" v-if="!isFieldHidden(formats, entry, 'flipHorizontal')">
                   <input type="checkbox" v-model="entry.tuning.flipHorizontal" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.flipHorizontal }"><span class="toggle-knob"></span></span>
                   {{ t('settings.flipHorizontal') }}
                 </label>
-                <label class="toggle">
+                <label class="toggle" v-if="!isFieldHidden(formats, entry, 'flipVertical')">
                   <input type="checkbox" v-model="entry.tuning.flipVertical" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.flipVertical }"><span class="toggle-knob"></span></span>
                   {{ t('settings.flipVertical') }}
                 </label>
-                <label class="toggle">
+                <label class="toggle" v-if="!isFieldHidden(formats, entry, 'deinterlace')">
                   <input type="checkbox" v-model="entry.tuning.deinterlace" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.deinterlace }"><span class="toggle-knob"></span></span>
                   {{ t('settings.deinterlace') }}
                 </label>
-                <label class="toggle">
+                <label class="toggle" v-if="!isFieldHidden(formats, entry, 'denoise')">
                   <input type="checkbox" v-model="entry.tuning.denoise" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.denoise }"><span class="toggle-knob"></span></span>
                   {{ t('settings.denoise') }}
                 </label>
-                <label class="toggle">
+                <label class="toggle" v-if="!isFieldHidden(formats, entry, 'repair')">
                   <input type="checkbox" v-model="entry.tuning.repair" class="visually-hidden" />
                   <span class="toggle-track" :class="{ on: entry.tuning.repair }"><span class="toggle-knob"></span></span>
                   {{ t('settings.repair') }}

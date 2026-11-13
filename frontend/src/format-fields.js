@@ -5,5 +5,8 @@ const SUPERSEDED_BY_TARGET_SIZE = ['videoBitrate', 'crf']
 // 畫面上藏起來，送出時也略過——藏起來的欄位若留著舊值照送，後端會回 INVALID_INPUT
 export function isFieldHidden(formats, entry, field) {
   if (entry.tuning?.targetSize && SUPERSEDED_BY_TARGET_SIZE.includes(field)) return true
-  return formats.find((f) => f.id === entry.format)?.unsupportedFields?.includes(field) ?? false
+  const format = formats.find((f) => f.id === entry.format)
+  // crf/preset 等欄位跟著使用者選的影片編碼變；沒選（或不是影片格式）就看格式預設
+  const unsupported = format?.unsupportedFieldsByVideoCodec?.[entry.tuning?.videoCodec] ?? format?.unsupportedFields
+  return unsupported?.includes(field) ?? false
 }

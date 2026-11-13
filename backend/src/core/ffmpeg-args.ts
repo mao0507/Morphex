@@ -3,18 +3,9 @@ import {
   ConvertTuning,
   FormatDefinition,
   MediaKind,
-  VideoCodecChoice,
 } from './types';
 import { ConversionError } from './errors';
-
-const VIDEO_CODEC_MAP: Record<VideoCodecChoice, string> = {
-  h264: 'libx264',
-  h265: 'libx265',
-  vp9: 'libvpx-vp9',
-  av1: 'libaom-av1',
-  mpeg4: 'mpeg4',
-  copy: 'copy',
-};
+import { assertTuningSupported, VIDEO_CODEC_MAP } from './formats';
 
 const AUDIO_CODEC_MAP: Record<AudioCodecChoice, string> = {
   aac: 'aac',
@@ -31,9 +22,6 @@ const ROTATE_FILTER: Record<90 | 180 | 270, string> = {
   270: 'transpose=2',
 };
 
-// -crf / -preset 是個別編碼器的私有選項，傳給不支援的編碼器會讓 ffmpeg 直接報錯退出
-const CRF_CODECS = new Set(['libx264', 'libx265', 'libvpx-vp9', 'libaom-av1']);
-const PRESET_CODECS = new Set(['libx264', 'libx265']);
 // 這些編碼器沒指定位元率時預設只有 200kbps，畫面會糊；改用固定品質 -q:v（2–31，越小越好）
 const QSCALE_CODECS = new Set(['mpeg2video']);
 const DEFAULT_QSCALE = '3';
@@ -149,6 +137,8 @@ export function buildFfmpegArgs(
   outputDurationSec?: number,
 ): string[] {
   validateCombination(inputKind, targetFormat);
+  // 目標用不到的欄位在這裡就擋掉，下面只管把剩下的欄位組成參數
+  assertTuningSupported(targetFormat, tuning);
 
   const args = ['-y'];
 
@@ -232,10 +222,10 @@ export function buildFfmpegArgs(
     } else if (videoCodec && QSCALE_CODECS.has(videoCodec)) {
       args.push('-q:v', DEFAULT_QSCALE);
     }
-    if (tuning.crf !== undefined && videoCodec && CRF_CODECS.has(videoCodec)) {
+    if (tuning.crf !== undefined) {
       args.push('-crf', String(tuning.crf));
     }
-    if (tuning.preset && videoCodec && PRESET_CODECS.has(videoCodec)) {
+    if (tuning.preset) {
       args.push('-preset', tuning.preset);
     }
     if (tuning.deinterlace) {

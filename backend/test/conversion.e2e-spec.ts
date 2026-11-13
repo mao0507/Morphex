@@ -114,14 +114,25 @@ describe('Conversion API (e2e)', () => {
   it('GET /formats 回傳格式清單', async () => {
     const res = await request(app.getHttpServer()).get('/formats').expect(200);
     expect(Array.isArray(res.body)).toBe(true);
-    const formats = res.body as { id: string; unsupportedFields: string[] }[];
+    const formats = res.body as {
+      id: string;
+      unsupportedFields: string[];
+      unsupportedFieldsByVideoCodec?: Record<string, string[]>;
+    }[];
     expect(formats.some((f) => f.id === 'mp4')).toBe(true);
     // 不支援的參數以前端送出的欄位名回報
     // 用各平台都有的 MPG：AMR 在 macOS 會因缺編碼器被濾掉
-    expect(formats.find((f) => f.id === 'mpg')?.unsupportedFields).toEqual([
-      'crf',
-      'preset',
-    ]);
+    const mpg = formats.find((f) => f.id === 'mpg');
+    expect(mpg?.unsupportedFields).toEqual(
+      expect.arrayContaining(['crf', 'preset']),
+    );
+    // 改選 H.264 就吃 crf；音訊目標用不到影片欄位，也沒有影片編碼這個維度
+    expect(mpg?.unsupportedFieldsByVideoCodec?.h264).not.toContain('crf');
+    const mp3 = formats.find((f) => f.id === 'mp3');
+    expect(mp3?.unsupportedFields).toEqual(
+      expect.arrayContaining(['resolution', 'frameRate', 'targetSize']),
+    );
+    expect(mp3?.unsupportedFieldsByVideoCodec).toBeUndefined();
   });
 
   it('影片轉影片：mp4 -> webm', async () => {

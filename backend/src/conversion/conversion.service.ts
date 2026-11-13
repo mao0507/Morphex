@@ -17,15 +17,24 @@ import { open, readdir, rm, stat } from 'fs/promises';
 import { join } from 'path';
 import { pipeline, Writable } from 'stream';
 import { ConversionError } from '../core/errors';
-import { ConvertTuning } from '../core/types';
+import { ConvertTuning, VideoCodecChoice } from '../core/types';
 import {
   ConvertRequestBody,
   parseConvertRequest,
   REQUEST_FIELD_BY_TUNING_KEY,
 } from './tuning.parser';
-import { FORMATS, getFormatById, unsupportedTuningOf } from '../core/formats';
+import {
+  FORMATS,
+  getFormatById,
+  unsupportedTuningOf,
+  VIDEO_CODEC_MAP,
+} from '../core/formats';
 import { coreEngine } from './core-engine';
 import { OUTPUTS_DIR, UPLOADS_DIR } from './storage.paths';
+
+const VIDEO_CODEC_CHOICES = Object.keys(VIDEO_CODEC_MAP) as VideoCodecChoice[];
+const fieldNames = (keys: (keyof ConvertTuning)[]) =>
+  keys.map((key) => REQUEST_FIELD_BY_TUNING_KEY[key]);
 
 export type JobStatus = 'queued' | 'processing' | 'done' | 'error';
 
@@ -107,9 +116,16 @@ export class ConversionService implements OnModuleInit, OnModuleDestroy {
       label: format.label,
       ext: format.ext,
       kind: format.kind,
-      unsupportedFields: unsupportedTuningOf(format).map(
-        (key) => REQUEST_FIELD_BY_TUNING_KEY[key],
-      ),
+      unsupportedFields: fieldNames(unsupportedTuningOf(format)),
+      // crf/preset 等欄位吃不吃跟使用者選的影片編碼有關，逐一列給前端查
+      ...(format.kind === 'video' && {
+        unsupportedFieldsByVideoCodec: Object.fromEntries(
+          VIDEO_CODEC_CHOICES.map((codec) => [
+            codec,
+            fieldNames(unsupportedTuningOf(format, codec)),
+          ]),
+        ),
+      }),
     }));
   }
 

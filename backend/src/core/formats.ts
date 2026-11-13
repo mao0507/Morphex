@@ -1,6 +1,11 @@
 import { ConversionError } from './errors';
 import { FFMPEG_ENCODERS } from './ffmpeg-binaries';
-import { ConvertTuning, FormatDefinition } from './types';
+import {
+  ConvertTuning,
+  FormatDefinition,
+  MediaKind,
+  VideoCodecChoice,
+} from './types';
 
 const ALL_FORMATS: FormatDefinition[] = [
   {
@@ -139,7 +144,7 @@ const ALL_FORMATS: FormatDefinition[] = [
     mimeTypes: ['video/ogg'],
   },
   {
-    // DVD 相容的 MPEG-PS；mpeg2video 不吃 -crf，畫質由 ffmpeg-args 的 -q:v 控制
+    // DVD 相容的 MPEG-PS；mpeg2video 不吃 -crf（見 CRF_CODECS），畫質由 ffmpeg-args 的 -q:v 控制
     id: 'mpg',
     label: 'MPG (MPEG-2 / MP2)',
     ext: 'mpg',
@@ -147,7 +152,6 @@ const ALL_FORMATS: FormatDefinition[] = [
     videoCodec: 'mpeg2video',
     audioCodec: 'mp2',
     extraArgs: ['-pix_fmt', 'yuv420p'],
-    unsupportedTuning: ['crf', 'preset'],
     mimeTypes: ['video/mpeg'],
   },
   {
@@ -272,20 +276,99 @@ export const FORMATS: FormatDefinition[] = ALL_FORMATS.filter(
   (format) => isEncodable(format.videoCodec) && isEncodable(format.audioCodec),
 );
 
-// 目標大小靠壓影片位元率達成，只有影片目標有意義，不用逐一寫進每個音訊/圖片格式
+export const VIDEO_CODEC_MAP: Record<VideoCodecChoice, string> = {
+  h264: 'libx264',
+  h265: 'libx265',
+  vp9: 'libvpx-vp9',
+  av1: 'libaom-av1',
+  mpeg4: 'mpeg4',
+  copy: 'copy',
+};
+
+// -crf / -preset 是個別編碼器的私有選項，傳給不支援的編碼器會讓 ffmpeg 直接報錯退出
+const CRF_CODECS = new Set(['libx264', 'libx265', 'libvpx-vp9', 'libaom-av1']);
+const PRESET_CODECS = new Set(['libx264', 'libx265']);
+
+// 每個 tuning 欄位對哪種目標有作用。新增欄位時型別會逼你在這裡分類——
+// 「這個欄位對這個目標有沒有用」只在這個檔案回答，engine 不再各自靜默略過
+const TUNING_TARGETS: Record<keyof ConvertTuning, readonly MediaKind[]> = {
+  resolution: ['video', 'image'],
+  frameRateFps: ['video'],
+  videoBitrateKbps: ['video'],
+  audioBitrateKbps: ['video', 'audio'],
+  trimStartSec: ['video', 'audio'],
+  trimEndSec: ['video', 'audio'],
+  normalizeAudio: ['video', 'audio'],
+  stripMetadata: ['video', 'audio', 'image'],
+  videoCodec: ['video'],
+  audioCodec: ['video', 'audio'],
+  crf: ['video'],
+  preset: ['video'],
+  audioChannels: ['video', 'audio'],
+  sampleRateHz: ['video', 'audio'],
+  rotate: ['video'],
+  flipHorizontal: ['video', 'image'],
+  flipVertical: ['video', 'image'],
+  speed: ['video', 'audio'],
+  deinterlace: ['video'],
+  denoise: ['video'],
+  brightness: ['video'],
+  contrast: ['video'],
+  saturation: ['video'],
+  repair: ['video', 'audio'],
+  targetSizeMB: ['video'],
+  quality: ['image'],
+};
+const TUNING_KEYS = Object.keys(TUNING_TARGETS) as (keyof ConvertTuning)[];
+
+// 直接複製影片串流（videoCodec=copy）時不能重新編碼，也就不能套濾鏡或控制位元率
+const NEEDS_VIDEO_ENCODE: (keyof ConvertTuning)[] = [
+  'resolution',
+  'frameRateFps',
+  'videoBitrateKbps',
+  'crf',
+  'preset',
+  'rotate',
+  'flipHorizontal',
+  'flipVertical',
+  'speed',
+  'deinterlace',
+  'denoise',
+  'brightness',
+  'contrast',
+  'saturation',
+  'targetSizeMB',
+];
+// ponytail: audioCodec=copy 搭配音訊濾鏡/位元率同樣無效，目前仍交給 ffmpeg 報錯；
+// 要補就比照 NEEDS_VIDEO_ENCODE 加一份，/formats 也得多一個維度
+
+// 這個目標用不到的 tuning 欄位：格式寫死的、目標種類用不到的、影片編碼器不吃的。
+// videoCodec 是使用者選的影片編碼（沒選就用格式預設），crf/preset 跟著它變
 export function unsupportedTuningOf(
   format: FormatDefinition,
+  videoCodec?: VideoCodecChoice,
 ): (keyof ConvertTuning)[] {
-  const own = format.unsupportedTuning ?? [];
-  return format.kind === 'video' ? own : [...own, 'targetSizeMB'];
+  const unsupported = new Set(format.unsupportedTuning ?? []);
+  for (const key of TUNING_KEYS) {
+    if (!TUNING_TARGETS[key].includes(format.kind)) unsupported.add(key);
+  }
+  if (format.kind === 'video') {
+    const codec = videoCodec ? VIDEO_CODEC_MAP[videoCodec] : format.videoCodec;
+    if (!codec || !CRF_CODECS.has(codec)) unsupported.add('crf');
+    if (!codec || !PRESET_CODECS.has(codec)) unsupported.add('preset');
+    if (videoCodec === 'copy') {
+      for (const key of NEEDS_VIDEO_ENCODE) unsupported.add(key);
+    }
+  }
+  return [...unsupported];
 }
 
 export function assertTuningSupported(
   format: FormatDefinition,
   tuning: ConvertTuning = {},
 ): void {
-  for (const field of unsupportedTuningOf(format)) {
-    if (tuning[field] !== undefined) {
+  for (const field of unsupportedTuningOf(format, tuning.videoCodec)) {
+    if (tuning[field] !== undefined && tuning[field] !== false) {
       throw new ConversionError(
         'INVALID_INPUT',
         `${format.id} 不能調整：${field}`,
